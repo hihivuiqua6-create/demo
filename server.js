@@ -1,226 +1,291 @@
-const express = require('express');
-const http = require('http');
-const socketIo = require('socket.io');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const cors = require('cors');
-const path = require('path');
+import express from 'express';
+import session from 'express-session';
+import bcrypt from 'bcrypt';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { pipeline } from '@xenova/transformers';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
-const server = http.createServer(app);
-const io = socketIo(server, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"]
-  }
-});
-
-// Middleware
-app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
-// In-memory database (thay bằng MongoDB trong production)
-const users = [];
-const messages = [];
-const onlineUsers = new Map();
+// Session config
+app.use(session({
+  secret: 'ai-chat-secret-key-2024',
+  resave: false,
+  saveUninitialized: false,
+  cookie: { maxAge: 24 * 60 * 60 * 1000 }
+}));
 
-// Secret key cho JWT
-const JWT_SECRET = 'your-secret-key-change-this';
+// ============ DATABASE (In-Memory) ============
+const users = [
+  {
+    id: 1,
+    username: 'admin',
+    password: await bcrypt.hash('admin123', 10),
+    role: 'admin',
+    vip: true
+  },
+  {
+    id: 2,
+    username: 'user',
+    password: await bcrypt.hash('123456', 10),
+    role: 'user',
+    vip: false
+  },
+  {
+    id: 3,
+    username: 'vip',
+    password: await bcrypt.hash('vip123', 10),
+    role: 'user',
+    vip: true
+  }
+];
 
-// API: Đăng ký tài khoản
+// ============ AI MODELS (FREE - NO API KEY) ============
+let normalAI = null;
+let vipAI = null;
+
+console.log('🤖 Đang tải AI models...');
+
+// Load AI models
+async function loadAIModels() {
+  try {
+    console.log('📦 Loading Normal AI...');
+    normalAI = await pipeline('text-generation', 'Xenova/DialoGPT-small');
+    
+    console.log('📦 Loading VIP AI...');
+    vipAI = await pipeline('text-generation', 'Xenova/Qwen2.5-0.5B-Instruct', {
+      quantized: true
+    });
+    
+    console.log('✅ AI models loaded!');
+  } catch (error) {
+    console.error('❌ Error loading AI:', error);
+  }
+}
+
+// ============ MIDDLEWARE ============
+function requireLogin(req, res, next) {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Chưa đăng nhập!' });
+  }
+  next();
+}
+
+function requireAdmin(req, res, next) {
+  const user = users.find(u => u.id === req.session.userId);
+  if (!user || user.role !== 'admin') {
+    return res.status(403).json({ error: 'Không có quyền admin!' });
+  }
+  next();
+}
+
+// ============ AUTH ROUTES ============
+
 app.post('/api/register', async (req, res) => {
   try {
-    const { username, email, password, avatar } = req.body;
-
-    // Kiểm tra user đã tồn tại
-    const existingUser = users.find(u => u.email === email || u.username === username);
-    if (existingUser) {
-      return res.status(400).json({ error: 'Username hoặc email đã tồn tại' });
+    const { username, password } = req.body;
+    
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Vui lòng nhập đầy đủ!' });
     }
-
-    // Hash password
+    
+    if (users.find(u => u.username === username)) {
+      return res.status(400).json({ error: 'Username đã tồn tại!' });
+    }
+    
     const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Tạo user mới
     const newUser = {
-      id: Date.now().toString(),
+      id: users.length + 1,
       username,
-      email,
       password: hashedPassword,
-      avatar: avatar || `https://ui-avatars.com/api/?name=${username}&background=random`,
-      createdAt: new Date()
+      role: 'user',
+      vip: false
     };
-
+    
     users.push(newUser);
-
-    // Tạo token
-    const token = jwt.sign({ id: newUser.id }, JWT_SECRET, { expiresIn: '7d' });
-
-    res.json({
-      success: true,
-      token,
-      user: {
-        id: newUser.id,
-        username: newUser.username,
-        email: newUser.email,
-        avatar: newUser.avatar
-      }
-    });
+    res.json({ success: true, message: 'Đăng ký thành công!' });
   } catch (error) {
-    res.status(500).json({ error: 'Lỗi server' });
+    res.status(500).json({ error: 'Lỗi server!' });
   }
 });
 
-// API: Đăng nhập
 app.post('/api/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
-
-    // Tìm user
-    const user = users.find(u => u.email === email);
+    const { username, password } = req.body;
+    
+    const user = users.find(u => u.username === username);
     if (!user) {
-      return res.status(400).json({ error: 'Email hoặc password không đúng' });
+      return res.status(400).json({ error: 'Sai tài khoản hoặc mật khẩu!' });
     }
-
-    // Kiểm tra password
-    const isValid = await bcrypt.compare(password, user.password);
-    if (!isValid) {
-      return res.status(400).json({ error: 'Email hoặc password không đúng' });
+    
+    const validPassword = await bcrypt.compare(password, user.password);
+    if (!validPassword) {
+      return res.status(400).json({ error: 'Sai tài khoản hoặc mật khẩu!' });
     }
-
-    // Tạo token
-    const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: '7d' });
-
-    res.json({
+    
+    req.session.userId = user.id;
+    res.json({ 
       success: true,
-      token,
       user: {
         id: user.id,
         username: user.username,
-        email: user.email,
-        avatar: user.avatar
+        role: user.role,
+        vip: user.vip
       }
     });
   } catch (error) {
-    res.status(500).json({ error: 'Lỗi server' });
+    res.status(500).json({ error: 'Lỗi server!' });
   }
 });
 
-// API: Lấy danh sách users
-app.get('/api/users', (req, res) => {
+app.post('/api/logout', (req, res) => {
+  req.session.destroy();
+  res.json({ success: true });
+});
+
+app.get('/api/me', requireLogin, (req, res) => {
+  const user = users.find(u => u.id === req.session.userId);
+  res.json({
+    id: user.id,
+    username: user.username,
+    role: user.role,
+    vip: user.vip
+  });
+});
+
+// ============ AI CHAT ============
+
+app.post('/api/chat', requireLogin, async (req, res) => {
+  try {
+    const { message } = req.body;
+    const user = users.find(u => u.id === req.session.userId);
+    
+    if (!message?.trim()) {
+      return res.status(400).json({ error: 'Tin nhắn trống!' });
+    }
+    
+    if (!normalAI || !vipAI) {
+      return res.status(503).json({ error: 'AI đang khởi động...' });
+    }
+    
+    let reply = '';
+    let modelName = '';
+    
+    if (user.vip) {
+      modelName = '🌟 Qwen AI (VIP)';
+      const prompt = `<|im_start|>system
+Bạn là trợ lý AI thông minh.<|im_end|>
+<|im_start|>user
+${message}<|im_end|>
+<|im_start|>assistant`;
+      
+      const result = await vipAI(prompt, {
+        max_new_tokens: 200,
+        temperature: 0.7,
+        do_sample: true
+      });
+      
+      reply = result[0].generated_text.split('<|im_start|>assistant')[1] || result[0].generated_text;
+      reply = reply.split('<|im_end|>')[0].trim();
+      
+    } else {
+      modelName = '💬 DialoGPT (Free)';
+      const result = await normalAI(message, {
+        max_new_tokens: 100,
+        temperature: 0.8
+      });
+      
+      reply = result[0].generated_text;
+      if (reply.includes(message)) {
+        reply = reply.split(message)[1] || reply;
+      }
+      reply = reply.trim();
+    }
+    
+    if (!reply) {
+      reply = user.vip ? 'Tôi có thể giúp gì?' : 'Xin chào!';
+    }
+    
+    res.json({ 
+      success: true,
+      reply: reply,
+      model: modelName,
+      isVip: user.vip
+    });
+    
+  } catch (error) {
+    console.error('Chat error:', error);
+    res.status(500).json({ error: 'Lỗi AI!' });
+  }
+});
+
+// ============ ADMIN ROUTES ============
+
+app.get('/api/admin/users', requireAdmin, (req, res) => {
   const userList = users.map(u => ({
     id: u.id,
     username: u.username,
-    avatar: u.avatar,
-    online: onlineUsers.has(u.id)
+    role: u.role,
+    vip: u.vip
   }));
   res.json(userList);
 });
 
-// API: Lấy tin nhắn giữa 2 users
-app.get('/api/messages/:userId1/:userId2', (req, res) => {
-  const { userId1, userId2 } = req.params;
-  const conversation = messages.filter(m => 
-    (m.from === userId1 && m.to === userId2) || 
-    (m.from === userId2 && m.to === userId1)
-  );
-  res.json(conversation);
-});
-
-// Socket.io cho real-time chat
-io.on('connection', (socket) => {
-  console.log('User connected:', socket.id);
-
-  // User đăng nhập
-  socket.on('user-online', (userId) => {
-    onlineUsers.set(userId, socket.id);
-    io.emit('user-status-change', { userId, online: true });
-  });
-
-  // Gửi tin nhắn
-  socket.on('send-message', (data) => {
-    const message = {
-      id: Date.now().toString(),
-      from: data.from,
-      to: data.to,
-      text: data.text,
-      timestamp: new Date()
-    };
-    
-    messages.push(message);
-    
-    // Gửi cho người nhận
-    const recipientSocketId = onlineUsers.get(data.to);
-    if (recipientSocketId) {
-      io.to(recipientSocketId).emit('receive-message', message);
-    }
-    
-    // Confirm cho người gửi
-    socket.emit('message-sent', message);
-  });
-
-  // User typing
-  socket.on('typing', (data) => {
-    const recipientSocketId = onlineUsers.get(data.to);
-    if (recipientSocketId) {
-      io.to(recipientSocketId).emit('user-typing', data.from);
-    }
-  });
-
-  socket.on('stop-typing', (data) => {
-    const recipientSocketId = onlineUsers.get(data.to);
-    if (recipientSocketId) {
-      io.to(recipientSocketId).emit('user-stop-typing', data.from);
-    }
-  });
-
-  // Video call signaling
-  socket.on('call-user', (data) => {
-    const recipientSocketId = onlineUsers.get(data.to);
-    if (recipientSocketId) {
-      io.to(recipientSocketId).emit('incoming-call', {
-        from: data.from,
-        offer: data.offer
-      });
-    }
-  });
-
-  socket.on('accept-call', (data) => {
-    const callerSocketId = onlineUsers.get(data.to);
-    if (callerSocketId) {
-      io.to(callerSocketId).emit('call-accepted', {
-        from: data.from,
-        answer: data.answer
-      });
-    }
-  });
-
-  socket.on('ice-candidate', (data) => {
-    const recipientSocketId = onlineUsers.get(data.to);
-    if (recipientSocketId) {
-      io.to(recipientSocketId).emit('ice-candidate', {
-        from: data.from,
-        candidate: data.candidate
-      });
-    }
-  });
-
-  // Disconnect
-  socket.on('disconnect', () => {
-    // Tìm và xóa user khỏi danh sách online
-    for (let [userId, socketId] of onlineUsers.entries()) {
-      if (socketId === socket.id) {
-        onlineUsers.delete(userId);
-        io.emit('user-status-change', { userId, online: false });
-        break;
-      }
-    }
-    console.log('User disconnected:', socket.id);
+app.post('/api/admin/toggle-vip/:userId', requireAdmin, (req, res) => {
+  const userId = parseInt(req.params.userId);
+  const user = users.find(u => u.id === userId);
+  
+  if (!user) {
+    return res.status(404).json({ error: 'User không tồn tại!' });
+  }
+  
+  if (user.role === 'admin') {
+    return res.status(400).json({ error: 'Không thể sửa admin!' });
+  }
+  
+  user.vip = !user.vip;
+  res.json({ 
+    success: true,
+    message: `${user.vip ? 'Cấp' : 'Hủy'} VIP cho ${user.username}!`,
+    user: { id: user.id, username: user.username, vip: user.vip }
   });
 });
+
+app.delete('/api/admin/delete-user/:userId', requireAdmin, (req, res) => {
+  const userId = parseInt(req.params.userId);
+  const userIndex = users.findIndex(u => u.id === userId);
+  
+  if (userIndex === -1) {
+    return res.status(404).json({ error: 'User không tồn tại!' });
+  }
+  
+  if (users[userIndex].role === 'admin') {
+    return res.status(400).json({ error: 'Không thể xóa admin!' });
+  }
+  
+  const deletedUser = users.splice(userIndex, 1)[0];
+  res.json({ success: true, message: `Đã xóa ${deletedUser.username}!` });
+});
+
+// ============ START ============
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`Server đang chạy tại http://localhost:${PORT}`);
+
+loadAIModels().then(() => {
+  app.listen(PORT, () => {
+    console.log(`
+╔════════════════════════════════╗
+║  🚀 SERVER: http://localhost:${PORT}
+║  👤 admin / admin123
+║  👤 user / 123456  
+║  👤 vip / vip123
+╚════════════════════════════════╝
+    `);
+  });
 });
