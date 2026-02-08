@@ -1,31 +1,24 @@
 {
-  "name": "ddos-testing-tool",
+  "name": "messenger-clone",
   "version": "1.0.0",
-  "description": "DDoS stress testing tool with proxy rotation - USE ONLY ON YOUR OWN SERVERS",
-  "main": "ai-server.js",
+  "description": "Messenger clone with Node.js and Socket.io",
+  "main": "server.js",
   "scripts": {
-    "start": "node ai-server.js",
-    "dev": "nodemon ai-server.js"
+    "start": "node server.js",
+    "dev": "nodemon server.js"
   },
-  "keywords": [
-    "ddos",
-    "stress-test",
-    "load-test",
-    "proxy",
-    "security-testing"
-  ],
-  "author": "Your Name",
-  "license": "MIT",
+  "keywords": ["chat", "messenger", "socket.io"],
+  "author": "",
+  "license": "ISC",
   "dependencies": {
     "express": "^4.18.2",
-    "axios": "^1.6.2",
-    "cors": "^2.8.5"
+    "socket.io": "^4.6.1",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"
-  },
-  "engines": {
-    "node": ">=14.0.0"
-  },
-  "warning": "⚠️ This tool is for testing YOUR OWN servers only. Using it against others is illegal!"
+  }
 }
