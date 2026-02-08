@@ -3,7 +3,7 @@ import session from 'express-session';
 import bcrypt from 'bcrypt';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { pipeline } from '@xenova/transformers';
+import axios from 'axios';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -46,28 +46,11 @@ const users = [
   }
 ];
 
-// ============ AI MODELS (FREE - NO API KEY) ============
-let normalAI = null;
-let vipAI = null;
+// ============ AI API CONFIG ============
+// THAY ĐỔI API URL TẠI ĐÂY ⬇️⬇️⬇️
+const AI_API_URL = process.env.AI_API_URL || 'https://ai-1eww.onrender.com';
 
-console.log('🤖 Đang tải AI models...');
-
-// Load AI models
-async function loadAIModels() {
-  try {
-    console.log('📦 Loading Normal AI...');
-    normalAI = await pipeline('text-generation', 'Xenova/DialoGPT-small');
-    
-    console.log('📦 Loading VIP AI...');
-    vipAI = await pipeline('text-generation', 'Xenova/Qwen2.5-0.5B-Instruct', {
-      quantized: true
-    });
-    
-    console.log('✅ AI models loaded!');
-  } catch (error) {
-    console.error('❌ Error loading AI:', error);
-  }
-}
+console.log('🤖 AI API URL:', AI_API_URL);
 
 // ============ MIDDLEWARE ============
 function requireLogin(req, res, next) {
@@ -170,46 +153,35 @@ app.post('/api/chat', requireLogin, async (req, res) => {
       return res.status(400).json({ error: 'Tin nhắn trống!' });
     }
     
-    if (!normalAI || !vipAI) {
-      return res.status(503).json({ error: 'AI đang khởi động...' });
-    }
-    
     let reply = '';
     let modelName = '';
     
-    if (user.vip) {
-      modelName = '🌟 Qwen AI (VIP)';
-      const prompt = `<|im_start|>system
-Bạn là trợ lý AI thông minh.<|im_end|>
-<|im_start|>user
-${message}<|im_end|>
-<|im_start|>assistant`;
-      
-      const result = await vipAI(prompt, {
-        max_new_tokens: 200,
-        temperature: 0.7,
-        do_sample: true
+    try {
+      // Gọi API external
+      const apiResponse = await axios.post(AI_API_URL, {
+        message: message,
+        vip: user.vip // Gửi thông tin VIP để API xử lý
+      }, {
+        timeout: 30000,
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
       
-      reply = result[0].generated_text.split('<|im_start|>assistant')[1] || result[0].generated_text;
-      reply = reply.split('<|im_end|>')[0].trim();
-      
-    } else {
-      modelName = '💬 DialoGPT (Free)';
-      const result = await normalAI(message, {
-        max_new_tokens: 100,
-        temperature: 0.8
-      });
-      
-      reply = result[0].generated_text;
-      if (reply.includes(message)) {
-        reply = reply.split(message)[1] || reply;
+      // Parse response từ API
+      if (apiResponse.data) {
+        reply = apiResponse.data.reply || apiResponse.data.response || apiResponse.data.message || 'Không có phản hồi';
+        modelName = user.vip ? '🌟 AI VIP' : '💬 AI Free';
       }
-      reply = reply.trim();
-    }
-    
-    if (!reply) {
-      reply = user.vip ? 'Tôi có thể giúp gì?' : 'Xin chào!';
+      
+    } catch (apiError) {
+      console.error('API Error:', apiError.message);
+      
+      // Fallback response nếu API lỗi
+      reply = user.vip 
+        ? 'Xin lỗi, AI VIP đang bận. Vui lòng thử lại!' 
+        : 'Xin lỗi, AI đang bận. Vui lòng thử lại!';
+      modelName = 'Error';
     }
     
     res.json({ 
@@ -221,7 +193,7 @@ ${message}<|im_end|>
     
   } catch (error) {
     console.error('Chat error:', error);
-    res.status(500).json({ error: 'Lỗi AI!' });
+    res.status(500).json({ error: 'Lỗi server!' });
   }
 });
 
@@ -273,19 +245,18 @@ app.delete('/api/admin/delete-user/:userId', requireAdmin, (req, res) => {
   res.json({ success: true, message: `Đã xóa ${deletedUser.username}!` });
 });
 
-// ============ START ============
+// ============ START SERVER ============
 
 const PORT = process.env.PORT || 3000;
 
-loadAIModels().then(() => {
-  app.listen(PORT, () => {
-    console.log(`
+app.listen(PORT, () => {
+  console.log(`
 ╔════════════════════════════════╗
 ║  🚀 SERVER: http://localhost:${PORT}
+║  🤖 AI API: ${AI_API_URL}
 ║  👤 admin / admin123
 ║  👤 user / 123456  
 ║  👤 vip / vip123
 ╚════════════════════════════════╝
-    `);
-  });
+  `);
 });
