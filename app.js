@@ -7,7 +7,10 @@ let currentUser = null;
 let selectedUser = null;
 let token = null;
 let users = [];
+let friends = [];
+let friendRequests = [];
 let typingTimeout = null;
+let searchTimeout = null;
 
 // WebRTC
 let localStream = null;
@@ -127,6 +130,38 @@ function showChatScreen() {
     
     // Load contacts
     loadContacts();
+    loadFriends();
+    loadFriendRequests();
+}
+
+// ===== TABS =====
+function showTab(tabName) {
+    // Update tab buttons
+    document.querySelectorAll('.tab-btn').forEach((btn, index) => {
+        btn.classList.remove('active');
+        const tabNames = ['chat', 'friends', 'search'];
+        if (tabNames[index] === tabName) {
+            btn.classList.add('active');
+        }
+    });
+    
+    // Update tab content
+    document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.remove('active');
+        content.style.display = 'none';
+    });
+    
+    const targetTab = document.getElementById(`${tabName}-tab`);
+    if (targetTab) {
+        targetTab.classList.add('active');
+        targetTab.style.display = 'flex';
+    }
+    
+    // Load data based on tab
+    if (tabName === 'friends') {
+        loadFriends();
+        loadFriendRequests();
+    }
 }
 
 // ===== CONTACTS =====
@@ -138,28 +173,268 @@ async function loadContacts() {
         const contactsList = document.getElementById('contacts-list');
         contactsList.innerHTML = '';
         
-        users.forEach(user => {
-            if (user.id !== currentUser.id) {
-                const contactItem = document.createElement('div');
-                contactItem.className = 'contact-item';
-                contactItem.onclick = () => selectUser(user);
-                
-                contactItem.innerHTML = `
-                    <div class="contact-avatar">
-                        <img src="${user.avatar}" alt="${user.username}">
-                        ${user.online ? '<div class="online-indicator"></div>' : ''}
-                    </div>
-                    <div class="contact-info">
-                        <h4>${user.username}</h4>
-                        <p>${user.online ? 'Đang hoạt động' : 'Không hoạt động'}</p>
-                    </div>
-                `;
-                
-                contactsList.appendChild(contactItem);
-            }
+        // Only show friends in contacts list
+        const friendResponse = await fetch(`${API_URL}/friends/${currentUser.id}`);
+        friends = await friendResponse.json();
+        
+        if (friends.length === 0) {
+            contactsList.innerHTML = `
+                <div class="empty-state">
+                    <svg width="80" height="80" viewBox="0 0 24 24" fill="#e4e6eb">
+                        <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
+                    </svg>
+                    <p>Chưa có bạn bè nào<br>Hãy thêm bạn bè để bắt đầu chat!</p>
+                </div>
+            `;
+            return;
+        }
+        
+        friends.forEach(user => {
+            const contactItem = document.createElement('div');
+            contactItem.className = 'contact-item';
+            contactItem.onclick = () => selectUser(user);
+            
+            contactItem.innerHTML = `
+                <div class="contact-avatar">
+                    <img src="${user.avatar}" alt="${user.username}">
+                    ${user.online ? '<div class="online-indicator"></div>' : ''}
+                </div>
+                <div class="contact-info">
+                    <h4>${user.username}</h4>
+                    <p>${user.online ? 'Đang hoạt động' : 'Không hoạt động'}</p>
+                </div>
+            `;
+            
+            contactsList.appendChild(contactItem);
         });
     } catch (error) {
         console.error('Error loading contacts:', error);
+    }
+}
+
+// ===== FRIENDS =====
+async function loadFriends() {
+    try {
+        const response = await fetch(`${API_URL}/friends/${currentUser.id}`);
+        friends = await response.json();
+        
+        document.getElementById('friends-count').textContent = friends.length;
+        
+        const friendsList = document.getElementById('friends-list');
+        friendsList.innerHTML = '';
+        
+        if (friends.length === 0) {
+            friendsList.innerHTML = `
+                <div class="empty-state">
+                    <svg width="80" height="80" viewBox="0 0 24 24" fill="#e4e6eb">
+                        <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
+                    </svg>
+                    <p>Chưa có bạn bè nào</p>
+                </div>
+            `;
+            return;
+        }
+        
+        friends.forEach(friend => {
+            const friendItem = document.createElement('div');
+            friendItem.className = 'contact-item';
+            friendItem.onclick = () => {
+                showTab('chat');
+                selectUser(friend);
+            };
+            
+            friendItem.innerHTML = `
+                <div class="contact-avatar">
+                    <img src="${friend.avatar}" alt="${friend.username}">
+                    ${friend.online ? '<div class="online-indicator"></div>' : ''}
+                </div>
+                <div class="contact-info">
+                    <h4>${friend.username}</h4>
+                    <p>${friend.online ? 'Đang hoạt động' : 'Không hoạt động'}</p>
+                </div>
+            `;
+            
+            friendsList.appendChild(friendItem);
+        });
+    } catch (error) {
+        console.error('Error loading friends:', error);
+    }
+}
+
+async function loadFriendRequests() {
+    try {
+        const response = await fetch(`${API_URL}/friend-requests/${currentUser.id}`);
+        friendRequests = await response.json();
+        
+        const badge = document.getElementById('friend-request-badge');
+        const requestsSection = document.getElementById('friend-requests-section');
+        const requestsList = document.getElementById('friend-requests-list');
+        
+        if (friendRequests.length === 0) {
+            badge.style.display = 'none';
+            requestsSection.style.display = 'none';
+            return;
+        }
+        
+        badge.textContent = friendRequests.length;
+        badge.style.display = 'inline-block';
+        requestsSection.style.display = 'block';
+        requestsList.innerHTML = '';
+        
+        friendRequests.forEach(request => {
+            const requestItem = document.createElement('div');
+            requestItem.className = 'friend-request-item';
+            
+            requestItem.innerHTML = `
+                <img src="${request.sender.avatar}" alt="${request.sender.username}">
+                <div class="friend-request-info">
+                    <h4>${request.sender.username}</h4>
+                    <div class="friend-request-actions">
+                        <button class="btn-accept" onclick="respondToFriendRequest('${request.id}', 'accept')">
+                            Chấp nhận
+                        </button>
+                        <button class="btn-reject" onclick="respondToFriendRequest('${request.id}', 'reject')">
+                            Từ chối
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            requestsList.appendChild(requestItem);
+        });
+    } catch (error) {
+        console.error('Error loading friend requests:', error);
+    }
+}
+
+async function respondToFriendRequest(requestId, action) {
+    try {
+        const response = await fetch(`${API_URL}/friend-request/${requestId}/respond`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ action })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            loadFriendRequests();
+            loadFriends();
+            loadContacts();
+        } else {
+            alert(data.error || 'Có lỗi xảy ra');
+        }
+    } catch (error) {
+        console.error('Error responding to friend request:', error);
+    }
+}
+
+// ===== SEARCH USERS =====
+async function searchUsers() {
+    const query = document.getElementById('user-search-input').value.trim();
+    const resultsContainer = document.getElementById('search-results');
+    
+    if (query.length < 2) {
+        resultsContainer.innerHTML = `
+            <div class="empty-state">
+                <svg width="80" height="80" viewBox="0 0 24 24" fill="#e4e6eb">
+                    <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+                </svg>
+                <p>Nhập tên hoặc email để tìm kiếm</p>
+            </div>
+        `;
+        return;
+    }
+    
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(async () => {
+        try {
+            const response = await fetch(`${API_URL}/search/users?q=${encodeURIComponent(query)}&userId=${currentUser.id}`);
+            const results = await response.json();
+            
+            resultsContainer.innerHTML = '';
+            
+            if (results.length === 0) {
+                resultsContainer.innerHTML = `
+                    <div class="empty-state">
+                        <svg width="80" height="80" viewBox="0 0 24 24" fill="#e4e6eb">
+                            <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+                        </svg>
+                        <p>Không tìm thấy kết quả</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            results.forEach(user => {
+                const resultItem = document.createElement('div');
+                resultItem.className = 'search-result-item';
+                
+                let actionButton = '';
+                if (user.isFriend) {
+                    actionButton = `<button class="btn-message" onclick="messageUser('${user.id}')">Nhắn tin</button>`;
+                } else if (user.hasPendingRequest) {
+                    if (user.requestSentByMe) {
+                        actionButton = `<button class="btn-pending">Đã gửi lời mời</button>`;
+                    } else {
+                        actionButton = `<button class="btn-pending">Đang chờ phản hồi</button>`;
+                    }
+                } else {
+                    actionButton = `<button class="btn-add-friend" onclick="sendFriendRequest('${user.id}')">Kết bạn</button>`;
+                }
+                
+                resultItem.innerHTML = `
+                    <img src="${user.avatar}" alt="${user.username}">
+                    <div class="search-result-info">
+                        <h4>${user.username}</h4>
+                        <p>${user.email}</p>
+                    </div>
+                    ${actionButton}
+                `;
+                
+                resultsContainer.appendChild(resultItem);
+            });
+        } catch (error) {
+            console.error('Error searching users:', error);
+        }
+    }, 500);
+}
+
+async function sendFriendRequest(toUserId) {
+    try {
+        const response = await fetch(`${API_URL}/friend-request`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                from: currentUser.id,
+                to: toUserId
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            // Refresh search results
+            searchUsers();
+        } else {
+            alert(data.error || 'Có lỗi xảy ra');
+        }
+    } catch (error) {
+        console.error('Error sending friend request:', error);
+    }
+}
+
+function messageUser(userId) {
+    const user = users.find(u => u.id === userId) || friends.find(f => f.id === userId);
+    if (user) {
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelector('.tab-btn').classList.add('active');
+        showTab('chat');
+        selectUser(user);
     }
 }
 
@@ -463,6 +738,32 @@ socket.on('ice-candidate', async ({ from, candidate }) => {
     }
 });
 
+socket.on('friend-request-received', (request) => {
+    loadFriendRequests();
+    
+    // Show notification
+    if (Notification.permission === 'granted') {
+        new Notification('Lời mời kết bạn mới', {
+            body: `${request.sender?.username || 'Ai đó'} đã gửi lời mời kết bạn`,
+            icon: request.sender?.avatar
+        });
+    }
+});
+
+socket.on('friend-request-accepted', (request) => {
+    loadFriends();
+    loadContacts();
+    
+    // Show notification
+    if (Notification.permission === 'granted') {
+        const accepter = users.find(u => u.id === request.to);
+        new Notification('Lời mời kết bạn được chấp nhận', {
+            body: `${accepter?.username || 'Ai đó'} đã chấp nhận lời mời kết bạn của bạn`,
+            icon: accepter?.avatar
+        });
+    }
+});
+
 // ===== AUTO LOGIN =====
 window.addEventListener('load', () => {
     const savedToken = localStorage.getItem('token');
@@ -472,5 +773,10 @@ window.addEventListener('load', () => {
         token = savedToken;
         currentUser = JSON.parse(savedUser);
         showChatScreen();
+    }
+    
+    // Request notification permission
+    if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
     }
 });
