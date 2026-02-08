@@ -2,10 +2,10 @@
   "name": "ddos-testing-tool",
   "version": "1.0.0",
   "description": "DDoS stress testing tool with proxy rotation - USE ONLY ON YOUR OWN SERVERS",
-  "main": "ddos-server.js",
+  "main": "ai-server.js",
   "scripts": {
-    "start": "node ddos-server.js",
-    "dev": "nodemon ddos-server.js"
+    "start": "node ai-server.js",
+    "dev": "nodemon ai-server.js"
   },
   "keywords": [
     "ddos",
