@@ -1,2 +1,1 @@
-# demo
-chatbot AI
+AI server
