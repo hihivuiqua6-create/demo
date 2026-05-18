@@ -20,7 +20,7 @@ bot.onText(/\/start/, (msg)=>{
                         {
                             text:"🛒 Mở Shop",
                             web_app:{
-                                url:"https://your-miniapp-url.com"
+                                url:"https://lucvi1k.gt.tc/index.php?p=home"
                             }
                         }
                     ],
