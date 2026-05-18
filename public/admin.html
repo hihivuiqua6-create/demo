@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="vi"><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>TGBot · Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#08081a;--surface:#10111e;--surface-2:#171a2b;--border:#262842;--text:#eef0ff;--muted:#8a8fb0;--brand:#7c5cff;--brand-2:#22d3ee;--ok:#22c55e;--warn:#f59e0b;--danger:#ff5577}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,sans-serif;min-height:100vh}
+#gate{position:fixed;inset:0;background:var(--bg);display:grid;place-items:center;z-index:1000;color:var(--muted)}
+.layout{display:grid;grid-template-columns:260px 1fr;min-height:100vh}
+aside{background:linear-gradient(180deg,var(--surface) 0%,#0d0e1c 100%);border-right:1px solid var(--border);padding:22px 14px;display:flex;flex-direction:column}
+.brand{display:flex;align-items:center;gap:10px;padding:6px 8px;margin-bottom:18px}.brand .b{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,var(--brand),var(--brand-2));display:grid;place-items:center;font-weight:700}
+.nav-h{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;padding:14px 10px 6px}
+.nav a{display:flex;align-items:center;gap:10px;padding:10px 12px;color:var(--text);text-decoration:none;border-radius:10px;font-size:14px;margin:2px 0;cursor:pointer;font-weight:500}
+.nav a:hover{background:var(--surface-2)}.nav a.active{background:linear-gradient(135deg,rgba(124,92,255,.2),rgba(34,211,238,.1));border:1px solid rgba(124,92,255,.4)}
+.me{margin-top:auto;background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:12px;display:flex;align-items:center;gap:10px}
+.me .av{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--brand),var(--brand-2));display:grid;place-items:center;font-weight:700}
+main{padding:32px 36px;overflow-x:hidden}
+h1.page{margin:0 0 6px;font-size:26px;font-weight:700}p.page-sub{color:var(--muted);margin:0 0 24px;font-size:14px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:24px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px}
+.card .k{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.5px;font-weight:600}
+.card .v{font-size:28px;font-weight:700;margin-top:6px}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px;margin-bottom:18px}
+.panel h2{margin:0 0 14px;font-size:17px}
+label{display:block;font-size:12px;color:var(--muted);margin:10px 0 6px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+input,textarea,select{width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:11px 13px;border-radius:10px;font-size:14px;outline:none;font-family:inherit}
+input:focus,textarea:focus,select:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(124,92,255,.2)}
+textarea{min-height:110px;resize:vertical;font-family:JetBrains Mono,monospace;font-size:13px}
+button{background:linear-gradient(135deg,var(--brand),var(--brand-2));color:#fff;border:0;padding:11px 18px;border-radius:10px;cursor:pointer;font-weight:600;font-size:13px}
+button.ghost{background:var(--surface-2);border:1px solid var(--border);color:var(--text)}
+button.danger{background:linear-gradient(135deg,#ff5577,#ff8855)}
+button.ok{background:linear-gradient(135deg,#22c55e,#16a34a)}
+button:disabled{opacity:.5;cursor:not-allowed}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:11px 12px;border-bottom:1px solid var(--border)}th{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:600}
+.badge{display:inline-block;padding:3px 9px;border-radius:99px;font-size:11px;font-weight:600;background:var(--surface-2);border:1px solid var(--border)}
+.badge.ok{background:rgba(34,197,94,.15);color:#4ade80;border-color:rgba(34,197,94,.3)}
+.badge.warn{background:rgba(245,158,11,.15);color:#fbbf24;border-color:rgba(245,158,11,.3)}
+.badge.bad{background:rgba(255,85,119,.15);color:#ff7a99;border-color:rgba(255,85,119,.3)}
+.row{display:flex;gap:10px;flex-wrap:wrap}.row>*{flex:1;min-width:180px}
+.hint{color:var(--muted);font-size:12px;margin-top:6px}
+.toast{position:fixed;bottom:24px;right:24px;background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--brand);padding:14px 18px;border-radius:10px;z-index:999;animation:in .2s;max-width:340px}
+.toast.ok{border-left-color:var(--ok)}.toast.err{border-left-color:var(--danger)}
+@keyframes in{from{transform:translateX(20px);opacity:0}}
+section{display:none}section.active{display:block}
+.qr-prev{width:160px;height:160px;background:var(--surface-2);border:1px dashed var(--border);border-radius:12px;display:grid;place-items:center;overflow:hidden;color:var(--muted);font-size:12px}
+.qr-prev img{width:100%;height:100%;object-fit:contain}
+code{background:var(--surface-2);padding:2px 6px;border-radius:4px;font-family:JetBrains Mono,monospace;font-size:12px}
+</style></head><body>
+<div id="gate">Đang xác thực…</div>
+<div class="layout" id="app" style="display:none">
+  <aside>
+    <div class="brand"><div class="b">T</div><div><div style="font-weight:700">TGBot</div><div style="color:var(--muted);font-size:11px">Admin · Auzastore</div></div></div>
+    <div class="nav-h">Tổng quan</div>
+    <div class="nav">
+      <a data-tab="dash" class="active">📊 Dashboard</a>
+    </div>
+    <div class="nav-h">Quản lý</div>
+    <div class="nav">
+      <a data-tab="bots">🤖 Bot Telegram</a>
+      <a data-tab="newbot">➕ Thêm bot mới</a>
+      <a data-tab="sellers">🧑‍💼 Sellers</a>
+      <a data-tab="topups">💰 Nạp tiền</a>
+    </div>
+    <div class="nav-h">Hệ thống</div>
+    <div class="nav">
+      <a data-tab="bank">🏦 Cấu hình Bank</a>
+    </div>
+    <div class="me"><div class="av" id="av">A</div><div style="flex:1"><div style="font-weight:600" id="meName">admin</div><div style="color:var(--muted);font-size:11px">Quản trị viên</div></div>
+      <button class="ghost" style="padding:6px 10px" onclick="logout()">⎋</button></div>
+  </aside>
+  <main>
+    <!-- DASHBOARD -->
+    <section id="dash" class="active">
+      <h1 class="page">Dashboard</h1><p class="page-sub">Tổng quan hệ thống TGBot.</p>
+      <div class="cards" id="stats"></div>
+      <div class="panel"><h2>Hướng dẫn nhanh</h2>
+        <p class="hint">1. Vào <b>Cấu hình Bank</b> nhập STK + upload QR.<br>
+        2. Tạo <b>Seller</b> để cấp tài khoản cho khách.<br>
+        3. Seller đăng nhập <code>/seller</code>, nạp tiền, tạo bot bằng license key.<br>
+        4. License key được verify với <code id="licUrl"></code>.</p></div>
+    </section>
+    <!-- BOTS -->
+    <section id="bots">
+      <h1 class="page">Bot Telegram</h1><p class="page-sub">Tất cả bot trong hệ thống.</p>
+      <div class="panel"><table><thead><tr><th>ID</th><th>Web URL</th><th>Nút</th><th>Owner</th><th>Status</th><th></th></tr></thead><tbody id="botsTbl"></tbody></table></div>
+    </section>
+    <!-- NEW BOT -->
+    <section id="newbot">
+      <h1 class="page">Thêm bot mới</h1><p class="page-sub">Kết nối bot Telegram của bạn với một Mini App.</p>
+      <div class="panel">
+        <label>License Key <span style="color:var(--danger)">*</span></label>
+        <input id="b_key" placeholder="Nhập license key được cấp"/>
+        <p class="hint">Key sẽ được verify qua server license trước khi tạo bot.</p>
+        <label>Bot Token *</label><input id="b_tok" placeholder="123456:ABC..."/>
+        <label>Web URL (Mini App) *</label><input id="b_url" placeholder="https://..."/>
+        <label>Tin nhắn chào mừng (HTML)</label><textarea id="b_wel" placeholder="Để trống dùng mặc định"></textarea>
+        <p class="hint">Biến: <code>{name}</code> <code>{first_name}</code> <code>{username}</code> <code>{full_name}</code></p>
+        <label>Nhãn nút Mini App</label><input id="b_btn" value="🛒 Mở Shop (Mini App)"/>
+        <div style="margin-top:18px"><button onclick="createBot()">Kích hoạt bot</button></div>
+      </div>
+    </section>
+    <!-- SELLERS -->
+    <section id="sellers">
+      <h1 class="page">Sellers</h1><p class="page-sub">Tạo và quản lý tài khoản seller (admin tự mở).</p>
+      <div class="panel">
+        <h2>Tạo seller mới</h2>
+        <div class="row">
+          <div><label>Username</label><input id="s_u"/></div>
+          <div><label>Password</label><input id="s_p" type="password"/></div>
+          <div><label>Tên hiển thị</label><input id="s_n"/></div>
+        </div>
+        <div style="margin-top:14px"><button onclick="createSeller()">Tạo seller</button></div>
+      </div>
+      <div class="panel"><h2>Danh sách</h2><table><thead><tr><th>ID</th><th>Username</th><th>Tên</th><th>Số dư</th><th>Trạng thái</th><th></th></tr></thead><tbody id="sellersTbl"></tbody></table></div>
+    </section>
+    <!-- TOPUPS -->
+    <section id="topups">
+      <h1 class="page">Yêu cầu nạp tiền</h1><p class="page-sub">Duyệt khi đã nhận được tiền.</p>
+      <div class="panel"><table><thead><tr><th>ID</th><th>Seller</th><th>Số tiền</th><th>Nội dung CK</th><th>Trạng thái</th><th>Tạo lúc</th><th></th></tr></thead><tbody id="topupsTbl"></tbody></table></div>
+    </section>
+    <!-- BANK -->
+    <section id="bank">
+      <h1 class="page">Cấu hình Bank</h1><p class="page-sub">Thông tin sẽ hiện cho seller khi nạp tiền.</p>
+      <div class="panel">
+        <div class="row">
+          <div><label>Tên ngân hàng</label><input id="bk_name"/></div>
+          <div><label>Số tài khoản</label><input id="bk_acc"/></div>
+          <div><label>Chủ tài khoản</label><input id="bk_own"/></div>
+          <div><label>Prefix nội dung CK</label><input id="bk_pre" placeholder="NAP"/></div>
+        </div>
+        <div style="margin-top:18px;display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap">
+          <div><label>QR Bank</label><div class="qr-prev" id="qrPrev">Chưa có QR</div></div>
+          <div style="flex:1;min-width:240px"><label>Upload QR (PNG/JPG ≤ 2MB)</label><input type="file" id="qrFile" accept="image/*"/>
+            <p class="hint">Hoặc dán URL ảnh QR vào ô bên dưới:</p>
+            <input id="bk_qr" placeholder="/uploads/qr-xxx.png"/></div>
+        </div>
+        <div style="margin-top:18px"><button onclick="saveBank()">Lưu cấu hình</button></div>
+      </div>
+    </section>
+  </main>
+</div>
+<script>
+const T=()=>localStorage.getItem('tg_token');
+const H=()=>({Authorization:'Bearer '+T(),'Content-Type':'application/json'});
+function logout(){localStorage.clear();location.href='/login'}
+function toast(msg,kind=''){const t=document.createElement('div');t.className='toast '+kind;t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),3200)}
+async function api(url,opt={}){const r=await fetch(url,{...opt,headers:{...H(),...(opt.headers||{})}});if(r.status===401){logout();throw new Error('401')}const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'Lỗi');return d}
+
+// AUTH GATE — strict
+(async()=>{const t=T();if(!t){location.href='/login';return}
+  try{const me=await api('/api/me');if(me.role!=='admin'){location.href='/seller';return}
+    document.getElementById('meName').textContent=me.username;document.getElementById('av').textContent=me.username[0].toUpperCase();
+    document.getElementById('gate').remove();document.getElementById('app').style.display='grid';
+    initNav();loadDash();
+  }catch{location.href='/login'}})();
+
+function initNav(){document.querySelectorAll('.nav a').forEach(a=>a.onclick=()=>show(a.dataset.tab))}
+function show(tab){document.querySelectorAll('section').forEach(s=>s.classList.remove('active'));document.getElementById(tab).classList.add('active');
+  document.querySelectorAll('.nav a').forEach(a=>a.classList.toggle('active',a.dataset.tab===tab));
+  ({dash:loadDash,bots:loadBots,sellers:loadSellers,topups:loadTopups,bank:loadBank})[tab]?.()}
+
+async function loadDash(){const s=await api('/api/stats');document.getElementById('stats').innerHTML=
+  [['Bot tổng',s.bots],['Bot đang chạy',s.bots_active],['Người dùng',s.users],['Sellers',s.sellers],['Nạp chờ duyệt',s.topups_pending]]
+  .map(([k,v])=>`<div class="card"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
+  try{const b=await api('/api/bank');document.getElementById('licUrl').textContent='external license server'}catch{}}
+
+async function loadBots(){const rows=await api('/api/bots');document.getElementById('botsTbl').innerHTML=rows.map(b=>
+  `<tr><td>#${b.id}</td><td><a href="${b.web_url}" target="_blank" style="color:var(--brand-2)">${b.web_url}</a></td>
+  <td>${b.button_label||''}</td><td>${b.owner_seller_id?'seller#'+b.owner_seller_id:'<span class="badge">admin</span>'}</td>
+  <td><span class="badge ${b.active?'ok':'bad'}">${b.active?'Đang chạy':'Tắt'}</span></td>
+  <td><button class="ghost" onclick="toggleBot(${b.id},${b.active?0:1})">${b.active?'Tắt':'Bật'}</button>
+  <button class="danger" onclick="delBot(${b.id})">Xoá</button></td></tr>`).join('')||'<tr><td colspan="6" style="color:var(--muted);text-align:center;padding:30px">Chưa có bot</td></tr>'}
+async function toggleBot(id,active){await api('/api/bots/'+id,{method:'PATCH',body:JSON.stringify({active:!!active})});loadBots();toast('Đã cập nhật','ok')}
+async function delBot(id){if(!confirm('Xoá bot #'+id+'?'))return;await api('/api/bots/'+id,{method:'DELETE'});loadBots();toast('Đã xoá','ok')}
+async function createBot(){try{await api('/api/bots',{method:'POST',body:JSON.stringify({license_key:b_key.value.trim(),token:b_tok.value.trim(),web_url:b_url.value.trim(),welcome:b_wel.value,button_label:b_btn.value})});
+  toast('Bot đã kích hoạt','ok');b_key.value=b_tok.value=b_url.value=b_wel.value='';show('bots')}catch(e){toast(e.message,'err')}}
+
+async function loadSellers(){const rows=await api('/api/admin/sellers');document.getElementById('sellersTbl').innerHTML=rows.map(s=>
+  `<tr><td>#${s.id}</td><td><b>${s.username}</b></td><td>${s.display_name||''}</td><td>${(s.balance||0).toLocaleString('vi')} đ</td>
+  <td><span class="badge ${s.active?'ok':'bad'}">${s.active?'Active':'Khoá'}</span></td>
+  <td><button class="ghost" onclick="addBal(${s.id})">+ Tiền</button>
+  <button class="ghost" onclick="resetPwd(${s.id})">Reset PW</button>
+  <button class="ghost" onclick="toggleSeller(${s.id},${s.active?0:1})">${s.active?'Khoá':'Mở'}</button>
+  <button class="danger" onclick="delSeller(${s.id})">Xoá</button></td></tr>`).join('')||'<tr><td colspan="6" style="color:var(--muted);text-align:center;padding:30px">Chưa có seller</td></tr>'}
+async function createSeller(){try{await api('/api/admin/sellers',{method:'POST',body:JSON.stringify({username:s_u.value,password:s_p.value,display_name:s_n.value})});
+  toast('Đã tạo seller','ok');s_u.value=s_p.value=s_n.value='';loadSellers()}catch(e){toast(e.message,'err')}}
+async function addBal(id){const v=prompt('Cộng bao nhiêu (số âm để trừ)?');if(v===null)return;await api('/api/admin/sellers/'+id,{method:'PATCH',body:JSON.stringify({balance_delta:Number(v)})});loadSellers();toast('OK','ok')}
+async function resetPwd(id){const v=prompt('Mật khẩu mới (≥6 ký tự):');if(!v)return;await api('/api/admin/sellers/'+id,{method:'PATCH',body:JSON.stringify({password:v})});toast('Đã reset','ok')}
+async function toggleSeller(id,a){await api('/api/admin/sellers/'+id,{method:'PATCH',body:JSON.stringify({active:!!a})});loadSellers()}
+async function delSeller(id){if(!confirm('Xoá seller?'))return;await api('/api/admin/sellers/'+id,{method:'DELETE'});loadSellers()}
+
+async function loadTopups(){const rows=await api('/api/admin/topups');document.getElementById('topupsTbl').innerHTML=rows.map(t=>
+  `<tr><td>#${t.id}</td><td>${t.seller_username||'?'}</td><td><b>${t.amount.toLocaleString('vi')} đ</b></td>
+  <td><code>${t.transfer_code}</code></td>
+  <td><span class="badge ${t.status==='approved'?'ok':t.status==='rejected'?'bad':'warn'}">${t.status}</span></td>
+  <td style="color:var(--muted);font-size:12px">${t.created_at}</td>
+  <td>${t.status==='pending'?`<button class="ok" onclick="approve(${t.id})">Duyệt</button> <button class="danger" onclick="reject(${t.id})">Từ chối</button>`:''}</td></tr>`).join('')||'<tr><td colspan="7" style="color:var(--muted);text-align:center;padding:30px">Không có yêu cầu</td></tr>'}
+async function approve(id){await api('/api/admin/topups/'+id+'/approve',{method:'POST'});loadTopups();toast('Đã cộng tiền','ok')}
+async function reject(id){const n=prompt('Lý do từ chối:')||'';await api('/api/admin/topups/'+id+'/reject',{method:'POST',body:JSON.stringify({note:n})});loadTopups()}
+
+async function loadBank(){const b=await api('/api/bank');bk_name.value=b.bank_name;bk_acc.value=b.bank_account;bk_own.value=b.bank_owner;bk_qr.value=b.bank_qr_url;bk_pre.value=b.topup_prefix;
+  document.getElementById('qrPrev').innerHTML=b.bank_qr_url?`<img src="${b.bank_qr_url}"/>`:'Chưa có QR'}
+async function saveBank(){await api('/api/admin/bank',{method:'POST',body:JSON.stringify({bank_name:bk_name.value,bank_account:bk_acc.value,bank_owner:bk_own.value,bank_qr_url:bk_qr.value,topup_prefix:bk_pre.value})});toast('Đã lưu','ok');loadBank()}
+document.addEventListener('change',e=>{if(e.target.id==='qrFile'){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=async()=>{try{const d=await api('/api/admin/bank/qr-upload',{method:'POST',body:JSON.stringify({data_url:r.result})});bk_qr.value=d.url;document.getElementById('qrPrev').innerHTML=`<img src="${d.url}"/>`;toast('Đã upload QR','ok')}catch(ex){toast(ex.message,'err')}};r.readAsDataURL(f)}});
+</script></body></html>
