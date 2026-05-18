@@ -1,0 +1,591 @@
+<!doctype html>
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>TGBot · Admin v3</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/app.css">
+<style>
+  .app{display:grid;grid-template-columns:240px 1fr;min-height:100vh;background:#f6f7fb}
+  .side{background:#fff;border-right:1px solid #e7e9ef;padding:18px 12px;position:sticky;top:0;height:100vh;overflow:auto}
+  .side .logo{font-weight:800;font-size:18px;padding:6px 10px 18px}
+  .side a{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;color:#3a3f4b;text-decoration:none;font-weight:500;cursor:pointer;font-size:14px}
+  .side a:hover{background:#f1f3f9}
+  .side a.act{background:#eef2ff;color:#3a3fc6}
+  .side .small{font-size:11px;color:#8a90a0;text-transform:uppercase;letter-spacing:.08em;padding:18px 12px 6px}
+  .main{padding:24px;max-width:1280px;margin:0 auto;width:100%}
+  .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+  .topbar h1{margin:0;font-size:22px}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:18px}
+  .card{background:#fff;border:1px solid #e7e9ef;border-radius:14px;padding:14px 16px}
+  .card .lbl{font-size:12px;color:#8a90a0;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+  .card .num{font-size:22px;font-weight:700;margin-top:4px}
+  .panel{background:#fff;border:1px solid #e7e9ef;border-radius:14px;padding:18px;margin-bottom:18px}
+  .panel h2{margin:0 0 12px;font-size:16px;display:flex;align-items:center;gap:8px}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{padding:8px 10px;text-align:left;border-bottom:1px solid #eef0f5}
+  th{background:#fafbfd;font-weight:600;color:#5a6072;font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+  .btn{padding:7px 12px;border:1px solid #d8dbe5;background:#fff;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500}
+  .btn:hover{background:#f6f7fb}
+  .btn.pri{background:#4f46e5;color:#fff;border-color:#4f46e5}
+  .btn.pri:hover{background:#4338ca}
+  .btn.dan{background:#fff;color:#dc2626;border-color:#fecaca}
+  .btn.dan:hover{background:#fef2f2}
+  .btn.ok{background:#16a34a;color:#fff;border-color:#16a34a}
+  .input,select,textarea{padding:8px 11px;border:1px solid #d8dbe5;border-radius:8px;font:inherit;width:100%}
+  textarea{min-height:80px;font-family:ui-monospace,Menlo,monospace;font-size:12px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+  .pill{display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600}
+  .pill.ok{background:#dcfce7;color:#166534}
+  .pill.no{background:#fee2e2;color:#991b1b}
+  .pill.warn{background:#fef3c7;color:#92400e}
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:50;padding:20px}
+  .modal.open{display:flex}
+  .modal .box{background:#fff;border-radius:14px;padding:22px;max-width:680px;width:100%;max-height:90vh;overflow:auto}
+  .toast{position:fixed;bottom:20px;right:20px;background:#111;color:#fff;padding:10px 16px;border-radius:8px;z-index:99;opacity:0;transition:.2s;font-size:13px}
+  .toast.show{opacity:1}
+  .hide{display:none!important}
+  .muted{color:#8a90a0;font-size:12px}
+  .chk{cursor:pointer}
+  details.acc{border:1px solid #e7e9ef;border-radius:10px;padding:10px 14px;background:#fafbfd;margin-top:8px}
+  details.acc summary{cursor:pointer;font-weight:600}
+  .file-drop{border:2px dashed #cbd1de;border-radius:10px;padding:16px;text-align:center;color:#6b7280;font-size:13px;cursor:pointer}
+  .file-drop:hover{background:#fafbfd}
+  .field{margin-bottom:10px}
+  .field label{display:block;font-size:12px;color:#5a6072;font-weight:600;margin-bottom:4px}
+  @media(max-width:780px){.app{grid-template-columns:1fr}.side{position:relative;height:auto}}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="logo">⚡ TGBot v3</div>
+    <a data-tab="dashboard" class="act">📊 Dashboard</a>
+    <a data-tab="bots">🤖 Bots</a>
+    <a data-tab="sellers">👥 Sellers</a>
+    <a data-tab="users">🙋 Users</a>
+    <a data-tab="messages">💬 Tin nhắn</a>
+    <a data-tab="broadcast">📢 Broadcast</a>
+    <a data-tab="topups">💰 Nạp tiền</a>
+    <a data-tab="bank">🏦 Cấu hình bank</a>
+    <div class="small">Tài khoản</div>
+    <a onclick="logout()">🚪 Đăng xuất</a>
+    <div class="muted" style="padding:18px 12px 0">v3.0 · <span id="me-name"></span></div>
+  </aside>
+
+  <main class="main">
+    <!-- DASHBOARD -->
+    <section data-page="dashboard">
+      <div class="topbar"><h1>Dashboard</h1></div>
+      <div class="cards" id="stats-cards"></div>
+      <div class="panel">
+        <h2>⏳ Sellers sắp hết hạn (7 ngày tới)</h2>
+        <div id="expiring-soon"></div>
+      </div>
+    </section>
+
+    <!-- BOTS -->
+    <section data-page="bots" class="hide">
+      <div class="topbar">
+        <h1>🤖 Quản lý Bot</h1>
+        <button class="btn pri" onclick="openBotModal()">+ Thêm bot</button>
+      </div>
+      <div class="panel">
+        <table id="bots-tbl">
+          <thead><tr><th>#</th><th>Bot</th><th>Web</th><th>Auto-reply</th><th>Chủ sở hữu</th><th>Trạng thái</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- SELLERS -->
+    <section data-page="sellers" class="hide">
+      <div class="topbar">
+        <h1>👥 Sellers</h1>
+        <button class="btn pri" onclick="openSellerModal()">+ Thêm seller</button>
+      </div>
+      <div class="panel">
+        <table id="sellers-tbl">
+          <thead><tr><th>#</th><th>Tài khoản</th><th>Tên hiển thị</th><th>Số dư</th><th>Hạn dùng</th><th>Trạng thái</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- USERS -->
+    <section data-page="users" class="hide">
+      <div class="topbar"><h1>🙋 Users của bot</h1></div>
+      <div class="panel">
+        <div class="row" style="margin-bottom:12px">
+          <select id="users-bot-filter" class="input" style="max-width:260px"><option value="">— Tất cả bot —</option></select>
+          <input id="users-q" class="input" placeholder="Tìm username / tg id" style="max-width:280px"/>
+          <button class="btn" onclick="loadUsers()">Tìm</button>
+        </div>
+        <table id="users-tbl">
+          <thead><tr><th>Bot</th><th>User</th><th>TG ID</th><th>Tin nhắn</th><th>Lần cuối</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- MESSAGES -->
+    <section data-page="messages" class="hide">
+      <div class="topbar">
+        <h1>💬 Tin nhắn</h1>
+        <button class="btn dan" onclick="nukeAllMessages()">🗑 Xoá toàn hệ thống</button>
+      </div>
+      <div class="panel">
+        <div class="row" style="margin-bottom:12px">
+          <select id="msg-bot" class="input" style="max-width:280px"><option value="">— Chọn bot để xem user —</option></select>
+          <select id="msg-user" class="input" style="max-width:280px"><option value="">— Chọn user —</option></select>
+          <button class="btn" onclick="loadMessages()">Tải</button>
+          <button class="btn dan hide" id="btn-clear-user" onclick="clearUserMsgs()">🗑 Xoá hết tin với user này</button>
+          <button class="btn dan hide" id="btn-del-selected" onclick="deleteSelectedMsgs()">🗑 Xoá tin đã chọn (<span id="sel-cnt">0</span>)</button>
+        </div>
+        <div id="msg-list"></div>
+      </div>
+    </section>
+
+    <!-- BROADCAST -->
+    <section data-page="broadcast" class="hide">
+      <div class="topbar"><h1>📢 Broadcast</h1></div>
+      <div class="panel">
+        <div class="field">
+          <label>Gửi tới bot</label>
+          <select id="bc-bot" class="input"><option value="">— Tất cả bot active —</option></select>
+        </div>
+        <div class="field">
+          <label>Nội dung (HTML)</label>
+          <textarea id="bc-text" placeholder="<b>Khuyến mãi tháng này!</b>..."></textarea>
+        </div>
+        <button class="btn pri" onclick="sendBroadcast()">🚀 Gửi</button>
+      </div>
+      <div class="panel">
+        <h2>Lịch sử broadcast</h2>
+        <table id="bc-tbl"><thead><tr><th>ID</th><th>Bot</th><th>Total / Sent / Failed</th><th>Time</th><th>Nội dung</th></tr></thead><tbody></tbody></table>
+      </div>
+    </section>
+
+    <!-- TOPUPS -->
+    <section data-page="topups" class="hide">
+      <div class="topbar"><h1>💰 Yêu cầu nạp tiền</h1></div>
+      <div class="panel">
+        <table id="topups-tbl"><thead><tr><th>#</th><th>Seller</th><th>Số tiền</th><th>Mã CK</th><th>Trạng thái</th><th>Lúc</th><th></th></tr></thead><tbody></tbody></table>
+      </div>
+    </section>
+
+    <!-- BANK -->
+    <section data-page="bank" class="hide">
+      <div class="topbar"><h1>🏦 Cấu hình ngân hàng</h1></div>
+      <div class="panel">
+        <div class="grid2">
+          <div class="field"><label>Tên ngân hàng</label><input id="bk-name" class="input"/></div>
+          <div class="field"><label>Số tài khoản</label><input id="bk-acc" class="input"/></div>
+          <div class="field"><label>Chủ tài khoản</label><input id="bk-own" class="input"/></div>
+          <div class="field"><label>Prefix mã CK</label><input id="bk-pre" class="input"/></div>
+          <div class="field"><label>URL ảnh QR (hoặc upload)</label><input id="bk-qr" class="input"/></div>
+          <div class="field"><label>Upload ảnh QR</label><input type="file" id="bk-qr-file" accept="image/*"/></div>
+        </div>
+        <button class="btn pri" onclick="saveBank()">💾 Lưu</button>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- MODAL BOT -->
+<div class="modal" id="m-bot"><div class="box">
+  <h2 id="m-bot-title">Thêm bot</h2>
+  <input type="hidden" id="b-id"/>
+  <div class="field"><label>Bot token (BotFather)</label><input id="b-token" class="input" placeholder="123456:ABC-..."/></div>
+  <div class="grid2">
+    <div class="field"><label>Web URL (https) — để trống nếu dùng ZIP</label><input id="b-url" class="input" placeholder="https://..."/></div>
+    <div class="field"><label>Chế độ web</label>
+      <select id="b-mode" class="input"><option value="url">URL</option><option value="zip">ZIP đã upload</option></select>
+    </div>
+  </div>
+  <div class="field"><label>Nhãn nút menu</label><input id="b-label" class="input" placeholder="Mở Shop (Mini App)"/></div>
+  <div class="field"><label>Chủ sở hữu (seller id) — trống = admin</label><input id="b-owner" class="input" placeholder="vd 3"/></div>
+  <details class="acc"><summary>📝 Welcome message (tin nhắn /start)</summary>
+    <p class="muted">Biến: {full_name} {first_name} {username} {monthly_users}. HTML cho phép &lt;b&gt;.</p>
+    <textarea id="b-welcome" placeholder="Để trống = mặc định"></textarea>
+  </details>
+  <details class="acc"><summary>🤖 Auto-reply (trả lời tự động mọi tin nhắn)</summary>
+    <label class="chk"><input type="checkbox" id="b-ar-en"/> Bật auto-reply</label>
+    <textarea id="b-ar-text" style="margin-top:8px" placeholder="Để trống = template mặc định"></textarea>
+    <div id="b-ar-ex-wrap" class="hide" style="margin-top:10px">
+      <div class="muted">Ngoại lệ (TG user ID không nhận auto-reply):</div>
+      <div id="b-ar-ex-list"></div>
+      <div class="row" style="margin-top:6px">
+        <input id="b-ar-ex-uid" class="input" placeholder="TG user ID" style="max-width:180px"/>
+        <input id="b-ar-ex-note" class="input" placeholder="Ghi chú"/>
+        <button class="btn" onclick="addException()">+ Thêm</button>
+      </div>
+    </div>
+  </details>
+  <details class="acc" id="b-zip-wrap"><summary>📦 Upload ZIP nguồn web (thay link)</summary>
+    <p class="muted">ZIP phải chứa <code>index.html</code> ở thư mục gốc (hoặc trong 1 thư mục bao ngoài duy nhất). Sau upload, bot tự host tại <code>/site/&lt;bot_id&gt;/</code>.</p>
+    <input type="file" id="b-zip-file" accept=".zip"/>
+    <button class="btn" onclick="uploadZip()" style="margin-top:6px">⬆️ Upload & host</button>
+    <button class="btn dan" onclick="removeZip()" style="margin-top:6px">🗑 Xoá site hosted</button>
+    <div id="b-zip-info" class="muted" style="margin-top:6px"></div>
+  </details>
+  <div class="row" style="margin-top:16px;justify-content:flex-end">
+    <button class="btn" onclick="closeBotModal()">Huỷ</button>
+    <button class="btn pri" onclick="saveBot()">💾 Lưu</button>
+  </div>
+</div></div>
+
+<!-- MODAL SELLER -->
+<div class="modal" id="m-seller"><div class="box">
+  <h2 id="m-seller-title">Thêm seller</h2>
+  <input type="hidden" id="s-id"/>
+  <div class="grid2">
+    <div class="field"><label>Username</label><input id="s-user" class="input"/></div>
+    <div class="field"><label>Mật khẩu (≥6)</label><input id="s-pass" class="input" type="text"/></div>
+    <div class="field"><label>Tên hiển thị</label><input id="s-name" class="input"/></div>
+    <div class="field"><label>Hạn dùng (số ngày, trống = vĩnh viễn)</label><input id="s-days" class="input" type="number" placeholder="30"/></div>
+  </div>
+  <div class="row" style="margin-top:8px;justify-content:flex-end">
+    <button class="btn" onclick="closeSellerModal()">Huỷ</button>
+    <button class="btn pri" onclick="saveSeller()">💾 Lưu</button>
+  </div>
+</div></div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const T = localStorage.getItem('tg_token');
+if(!T) location.href='/login';
+const H = {'Authorization':'Bearer '+T,'Content-Type':'application/json'};
+const toast = (m) => { const t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2200); };
+async function api(p,o={}){ const r=await fetch(p,{...o,headers:{...H,...(o.headers||{})}}); const d=await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.error||('HTTP '+r.status)); return d; }
+function logout(){ localStorage.clear(); location.href='/login'; }
+const fmt = (n)=> (n||0).toLocaleString('vi-VN');
+const dt = (s)=> s ? new Date(s).toLocaleString('vi-VN') : '—';
+const daysLeft = (s) => { if(!s) return '∞'; const d=Math.ceil((new Date(s)-Date.now())/86400000); return d<=0?'hết':(d+'d'); };
+
+// nav
+document.querySelectorAll('.side [data-tab]').forEach(a=>{
+  a.onclick = ()=>{
+    document.querySelectorAll('.side a').forEach(x=>x.classList.remove('act'));
+    a.classList.add('act');
+    const tab = a.dataset.tab;
+    document.querySelectorAll('[data-page]').forEach(p=>p.classList.add('hide'));
+    document.querySelector(`[data-page="${tab}"]`).classList.remove('hide');
+    if(tab==='dashboard') loadStats();
+    if(tab==='bots') loadBots();
+    if(tab==='sellers') loadSellers();
+    if(tab==='users') loadUsers();
+    if(tab==='messages') loadMsgBots();
+    if(tab==='broadcast'){ loadBroadcastBots(); loadBroadcastHist(); }
+    if(tab==='topups') loadTopups();
+    if(tab==='bank') loadBank();
+  };
+});
+
+// ME + INIT
+(async()=>{ try{ const me=await api('/api/me'); document.getElementById('me-name').textContent=me.username; }catch{} loadStats(); })();
+
+// ====== DASHBOARD ======
+async function loadStats(){
+  const s = await api('/api/stats');
+  const cards = [
+    ['Bots', s.bots, s.bots_active+' active'],
+    ['Sellers', s.sellers, s.sellers_expiring_7d+' sắp hết hạn'],
+    ['Users', fmt(s.users), fmt(s.users_monthly)+' /tháng'],
+    ['Tin nhắn', fmt(s.messages), ''],
+    ['Yêu cầu nạp', s.topups_pending, 'đang chờ'],
+  ];
+  document.getElementById('stats-cards').innerHTML = cards.map(([l,n,sub])=>
+    `<div class="card"><div class="lbl">${l}</div><div class="num">${n}</div><div class="muted">${sub}</div></div>`).join('');
+  // expiring soon
+  const sellers = await api('/api/admin/sellers');
+  const soon = sellers.filter(s=>s.expires_at && (new Date(s.expires_at)-Date.now()) < 7*86400000);
+  document.getElementById('expiring-soon').innerHTML = soon.length
+    ? `<table><thead><tr><th>Seller</th><th>Hết hạn</th><th>Còn</th></tr></thead><tbody>${soon.map(s=>`<tr><td>${s.username}</td><td>${dt(s.expires_at)}</td><td><span class="pill warn">${daysLeft(s.expires_at)}</span></td></tr>`).join('')}</tbody></table>`
+    : '<div class="muted">Không có seller nào sắp hết hạn.</div>';
+}
+
+// ====== BOTS ======
+let allBots=[], allSellers=[];
+async function loadBots(){
+  allBots = await api('/api/bots');
+  document.querySelector('#bots-tbl tbody').innerHTML = allBots.map(b=>`
+    <tr>
+      <td>${b.id}</td>
+      <td><b>@${b.bot_username||'?'}</b></td>
+      <td><a href="${b.effective_url||'#'}" target="_blank" style="font-size:12px">${b.effective_url||'—'}</a><br><span class="pill ${b.web_mode==='zip'?'warn':'ok'}">${b.web_mode||'url'}</span></td>
+      <td>${b.auto_reply_enabled?'<span class="pill ok">ON</span>':'<span class="pill no">OFF</span>'}</td>
+      <td>${b.owner_username||'<i class="muted">admin</i>'}</td>
+      <td>${b.active?'<span class="pill ok">Active</span>':'<span class="pill no">Stopped</span>'}</td>
+      <td>
+        <button class="btn" onclick='editBot(${b.id})'>✏️</button>
+        <button class="btn" onclick='toggleBot(${b.id},${b.active?0:1})'>${b.active?'⏹':'▶️'}</button>
+        <button class="btn dan" onclick='delBot(${b.id})'>🗑</button>
+      </td>
+    </tr>`).join('');
+}
+async function openBotModal(){
+  document.getElementById('m-bot-title').textContent='Thêm bot';
+  ['b-id','b-token','b-url','b-label','b-owner','b-welcome','b-ar-text','b-ar-ex-uid','b-ar-ex-note'].forEach(i=>document.getElementById(i).value='');
+  document.getElementById('b-mode').value='url';
+  document.getElementById('b-ar-en').checked=false;
+  document.getElementById('b-ar-ex-wrap').classList.add('hide');
+  document.getElementById('b-zip-wrap').classList.add('hide');
+  document.getElementById('m-bot').classList.add('open');
+}
+function closeBotModal(){ document.getElementById('m-bot').classList.remove('open'); }
+async function editBot(id){
+  const b = allBots.find(x=>x.id===id);
+  document.getElementById('m-bot-title').textContent='Sửa bot #'+id;
+  document.getElementById('b-id').value=id;
+  document.getElementById('b-token').value=b.token||'';
+  document.getElementById('b-url').value=b.web_url||'';
+  document.getElementById('b-mode').value=b.web_mode||'url';
+  document.getElementById('b-label').value=b.button_label||'';
+  document.getElementById('b-owner').value=b.owner_seller_id||'';
+  document.getElementById('b-welcome').value=b.welcome||'';
+  document.getElementById('b-ar-en').checked=!!b.auto_reply_enabled;
+  document.getElementById('b-ar-text').value=b.auto_reply_text||'';
+  document.getElementById('b-ar-ex-wrap').classList.remove('hide');
+  document.getElementById('b-zip-wrap').classList.remove('hide');
+  document.getElementById('b-zip-info').textContent = b.web_zip_dir ? ('Đang host: /site/'+id+'/') : 'Chưa upload ZIP.';
+  loadExceptions(id);
+  document.getElementById('m-bot').classList.add('open');
+}
+async function saveBot(){
+  const id = document.getElementById('b-id').value;
+  const body = {
+    token: document.getElementById('b-token').value.trim(),
+    web_url: document.getElementById('b-url').value.trim(),
+    web_mode: document.getElementById('b-mode').value,
+    button_label: document.getElementById('b-label').value.trim(),
+    owner_seller_id: document.getElementById('b-owner').value || null,
+    welcome: document.getElementById('b-welcome').value,
+    auto_reply_enabled: document.getElementById('b-ar-en').checked,
+    auto_reply_text: document.getElementById('b-ar-text').value,
+  };
+  try{
+    if(id) await api('/api/bots/'+id, {method:'PATCH', body:JSON.stringify(body)});
+    else await api('/api/bots', {method:'POST', body:JSON.stringify(body)});
+    toast('Đã lưu'); closeBotModal(); loadBots();
+  }catch(e){ toast('Lỗi: '+e.message); }
+}
+async function toggleBot(id,active){ await api('/api/bots/'+id,{method:'PATCH',body:JSON.stringify({active})}); loadBots(); }
+async function delBot(id){ if(!confirm('Xoá bot #'+id+' và toàn bộ dữ liệu?')) return; await api('/api/bots/'+id,{method:'DELETE'}); toast('Đã xoá'); loadBots(); }
+async function loadExceptions(id){
+  const list = await api('/api/bots/'+id+'/autoreply/exceptions');
+  document.getElementById('b-ar-ex-list').innerHTML = list.length
+    ? list.map(e=>`<div class="row" style="margin-top:4px"><span class="pill ok">${e.tg_user_id}</span><span class="muted">${e.username||e.first_name||''} ${e.note?'· '+e.note:''}</span><button class="btn dan" onclick="delException(${id},${e.id})">×</button></div>`).join('')
+    : '<div class="muted">Chưa có ngoại lệ.</div>';
+}
+async function addException(){
+  const id = document.getElementById('b-id').value;
+  if(!id){ toast('Lưu bot trước đã'); return; }
+  const uid = Number(document.getElementById('b-ar-ex-uid').value);
+  if(!uid) return;
+  try{ await api('/api/bots/'+id+'/autoreply/exceptions',{method:'POST',body:JSON.stringify({tg_user_id:uid,note:document.getElementById('b-ar-ex-note').value})}); loadExceptions(id); document.getElementById('b-ar-ex-uid').value=''; document.getElementById('b-ar-ex-note').value=''; }catch(e){ toast(e.message); }
+}
+async function delException(botId,exId){ await api(`/api/bots/${botId}/autoreply/exceptions/${exId}`,{method:'DELETE'}); loadExceptions(botId); }
+async function uploadZip(){
+  const id = document.getElementById('b-id').value;
+  if(!id){ toast('Lưu bot trước đã'); return; }
+  const f = document.getElementById('b-zip-file').files[0];
+  if(!f) return toast('Chọn file zip');
+  const fd = new FormData(); fd.append('zip', f);
+  try{
+    const r = await fetch('/api/bots/'+id+'/site-zip',{method:'POST',headers:{'Authorization':'Bearer '+T},body:fd});
+    const d = await r.json(); if(!r.ok) throw new Error(d.error||'Lỗi');
+    document.getElementById('b-zip-info').textContent = `✅ Hosted: ${d.url} (${d.files} files)`;
+    document.getElementById('b-mode').value='zip';
+    toast('Upload OK');
+  }catch(e){ toast(e.message); }
+}
+async function removeZip(){
+  const id = document.getElementById('b-id').value;
+  if(!id || !confirm('Xoá web hosted?')) return;
+  await api('/api/bots/'+id+'/site-zip',{method:'DELETE'});
+  document.getElementById('b-zip-info').textContent='Đã xoá.';
+  document.getElementById('b-mode').value='url';
+}
+
+// ====== SELLERS ======
+async function loadSellers(){
+  allSellers = await api('/api/admin/sellers');
+  document.querySelector('#sellers-tbl tbody').innerHTML = allSellers.map(s=>`
+    <tr>
+      <td>${s.id}</td><td><b>${s.username}</b></td><td>${s.display_name||''}</td>
+      <td>${fmt(s.balance)}đ</td>
+      <td>${s.expires_at?dt(s.expires_at)+` <span class="pill warn">${daysLeft(s.expires_at)}</span>`:'<span class="pill ok">∞</span>'}</td>
+      <td>${s.active?'<span class="pill ok">Active</span>':'<span class="pill no">Khoá</span>'}</td>
+      <td>
+        <button class="btn" onclick="addDays(${s.id})">+ Ngày</button>
+        <button class="btn" onclick="adjustBalance(${s.id})">💰</button>
+        <button class="btn" onclick="resetPass(${s.id})">🔑</button>
+        <button class="btn" onclick="toggleSeller(${s.id},${s.active?0:1})">${s.active?'⏸':'▶️'}</button>
+        <button class="btn dan" onclick="delSeller(${s.id})">🗑</button>
+      </td>
+    </tr>`).join('');
+}
+function openSellerModal(){
+  ['s-user','s-pass','s-name','s-days'].forEach(i=>document.getElementById(i).value='');
+  document.getElementById('m-seller').classList.add('open');
+}
+function closeSellerModal(){ document.getElementById('m-seller').classList.remove('open'); }
+async function saveSeller(){
+  try{
+    await api('/api/admin/sellers',{method:'POST',body:JSON.stringify({
+      username:document.getElementById('s-user').value.trim(),
+      password:document.getElementById('s-pass').value,
+      display_name:document.getElementById('s-name').value,
+      days: Number(document.getElementById('s-days').value)||null,
+    })});
+    toast('Đã tạo'); closeSellerModal(); loadSellers();
+  }catch(e){ toast(e.message); }
+}
+async function addDays(id){ const d=Number(prompt('Thêm bao nhiêu ngày?','30')); if(!d) return; await api('/api/admin/sellers/'+id,{method:'PATCH',body:JSON.stringify({add_days:d})}); loadSellers(); }
+async function adjustBalance(id){ const d=Number(prompt('Cộng/trừ số tiền (vd 100000 hoặc -50000):','100000')); if(!d) return; await api('/api/admin/sellers/'+id,{method:'PATCH',body:JSON.stringify({balance_delta:d})}); loadSellers(); }
+async function resetPass(id){ const p=prompt('Mật khẩu mới (≥6):'); if(!p||p.length<6) return; await api('/api/admin/sellers/'+id,{method:'PATCH',body:JSON.stringify({password:p})}); toast('OK'); }
+async function toggleSeller(id,active){ await api('/api/admin/sellers/'+id,{method:'PATCH',body:JSON.stringify({active})}); loadSellers(); }
+async function delSeller(id){ if(!confirm('XOÁ seller #'+id+' và toàn bộ bot của họ?')) return; await api('/api/admin/sellers/'+id,{method:'DELETE'}); loadSellers(); }
+
+// ====== USERS ======
+async function fillBotSelect(elId, includeAll=true){
+  if(!allBots.length) try{ allBots = await api('/api/bots'); }catch{}
+  const el = document.getElementById(elId);
+  el.innerHTML = (includeAll?'<option value="">— Tất cả —</option>':'<option value="">— Chọn bot —</option>')
+    + allBots.map(b=>`<option value="${b.id}">#${b.id} @${b.bot_username||'?'}</option>`).join('');
+}
+async function loadUsers(){
+  await fillBotSelect('users-bot-filter');
+  const bot = document.getElementById('users-bot-filter').value;
+  const q = document.getElementById('users-q').value;
+  const list = await api('/api/users?'+new URLSearchParams({bot_id:bot,q}).toString());
+  document.querySelector('#users-tbl tbody').innerHTML = list.map(u=>`
+    <tr>
+      <td>@${u.bot_username||u.bot_id}</td>
+      <td>${u.first_name||''} ${u.last_name||''} ${u.username?'<span class="muted">@'+u.username+'</span>':''}</td>
+      <td>${u.tg_user_id}</td>
+      <td>${u.msg_count}</td>
+      <td>${dt(u.last_seen)}</td>
+      <td><button class="btn" onclick="openMsgFor(${u.bot_id},${u.tg_user_id})">💬</button></td>
+    </tr>`).join('');
+}
+
+// ====== MESSAGES ======
+let curMsgBot=0,curMsgUid=0,selectedIds=new Set();
+async function loadMsgBots(){ await fillBotSelect('msg-bot', false); document.getElementById('msg-bot').onchange=loadMsgUsers; }
+async function loadMsgUsers(){
+  const bot = document.getElementById('msg-bot').value;
+  if(!bot) return;
+  const list = await api('/api/users?bot_id='+bot);
+  document.getElementById('msg-user').innerHTML = '<option value="">— Chọn user —</option>'+list.map(u=>`<option value="${u.tg_user_id}">${u.first_name||''} @${u.username||''} (${u.tg_user_id})</option>`).join('');
+}
+async function loadMessages(){
+  const bot = document.getElementById('msg-bot').value;
+  const uid = document.getElementById('msg-user').value;
+  if(!bot||!uid) return;
+  curMsgBot=Number(bot); curMsgUid=Number(uid); selectedIds.clear();
+  const d = await api(`/api/users/${bot}/${uid}/messages`);
+  document.getElementById('btn-clear-user').classList.remove('hide');
+  document.getElementById('btn-del-selected').classList.remove('hide');
+  document.getElementById('msg-list').innerHTML = d.messages.length
+    ? d.messages.map(m=>`<div class="row" style="padding:6px 4px;border-bottom:1px solid #eef0f5;align-items:flex-start">
+        <input type="checkbox" class="msg-chk" data-id="${m.id}" onchange="updateSel()"/>
+        <span class="pill ${m.direction==='in'?'ok':'warn'}">${m.direction}</span>
+        <span style="flex:1;white-space:pre-wrap;font-family:ui-monospace,Menlo,monospace;font-size:12px">${(m.text||'').replace(/</g,'&lt;')}</span>
+        <span class="muted">${dt(m.created_at)}</span>
+      </div>`).join('')
+    : '<div class="muted">Không có tin nhắn.</div>';
+  updateSel();
+}
+function updateSel(){
+  selectedIds = new Set([...document.querySelectorAll('.msg-chk:checked')].map(c=>Number(c.dataset.id)));
+  document.getElementById('sel-cnt').textContent = selectedIds.size;
+}
+async function deleteSelectedMsgs(){
+  if(selectedIds.size===0) return toast('Chưa chọn tin nào');
+  if(!confirm('Xoá '+selectedIds.size+' tin?')) return;
+  const r = await api('/api/messages/delete',{method:'POST',body:JSON.stringify({ids:[...selectedIds]})});
+  toast('Đã xoá '+r.deleted); loadMessages();
+}
+async function clearUserMsgs(){
+  if(!confirm('Xoá TOÀN BỘ tin nhắn với user này?')) return;
+  const r = await api(`/api/users/${curMsgBot}/${curMsgUid}/messages`,{method:'DELETE'});
+  toast('Đã xoá '+r.deleted); loadMessages();
+}
+async function nukeAllMessages(){
+  if(!confirm('⚠️ XOÁ TOÀN BỘ TIN NHẮN của TẤT CẢ BOT? Không hoàn tác được.')) return;
+  if(!confirm('Chắc chắn?')) return;
+  const r = await api('/api/admin/messages/all',{method:'DELETE'});
+  toast('Đã xoá '+r.deleted+' tin');
+}
+function openMsgFor(bot,uid){
+  document.querySelector('.side [data-tab="messages"]').click();
+  setTimeout(async()=>{
+    await loadMsgBots();
+    document.getElementById('msg-bot').value=bot;
+    await loadMsgUsers();
+    document.getElementById('msg-user').value=uid;
+    loadMessages();
+  },50);
+}
+
+// ====== BROADCAST ======
+async function loadBroadcastBots(){ await fillBotSelect('bc-bot'); }
+async function sendBroadcast(){
+  const text = document.getElementById('bc-text').value.trim();
+  if(!text) return;
+  try{
+    const r = await api('/api/broadcast',{method:'POST',body:JSON.stringify({text, bot_id: document.getElementById('bc-bot').value||null})});
+    toast('Đang gửi tới '+r.total+' người'); setTimeout(loadBroadcastHist,800);
+  }catch(e){ toast(e.message); }
+}
+async function loadBroadcastHist(){
+  const list = await api('/api/broadcasts');
+  document.querySelector('#bc-tbl tbody').innerHTML = list.map(b=>`<tr><td>${b.id}</td><td>${b.bot_id||'all'}</td><td>${b.total}/${b.sent}/${b.failed}</td><td>${dt(b.created_at)}</td><td>${(b.text||'').slice(0,80).replace(/</g,'&lt;')}</td></tr>`).join('');
+}
+
+// ====== TOPUPS ======
+async function loadTopups(){
+  const list = await api('/api/admin/topups');
+  document.querySelector('#topups-tbl tbody').innerHTML = list.map(t=>`
+    <tr>
+      <td>${t.id}</td><td>${t.seller_username||t.seller_id}</td>
+      <td>${fmt(t.amount)}đ</td><td><code>${t.transfer_code}</code></td>
+      <td><span class="pill ${t.status==='approved'?'ok':t.status==='rejected'?'no':'warn'}">${t.status}</span></td>
+      <td>${dt(t.created_at)}</td>
+      <td>${t.status==='pending'?`<button class="btn ok" onclick="appT(${t.id})">✓</button> <button class="btn dan" onclick="rejT(${t.id})">×</button>`:''}</td>
+    </tr>`).join('');
+}
+async function appT(id){ await api('/api/admin/topups/'+id+'/approve',{method:'POST'}); loadTopups(); }
+async function rejT(id){ const n=prompt('Lý do?','sai số tiền'); if(n===null) return; await api('/api/admin/topups/'+id+'/reject',{method:'POST',body:JSON.stringify({note:n})}); loadTopups(); }
+
+// ====== BANK ======
+async function loadBank(){
+  const b = await api('/api/bank');
+  document.getElementById('bk-name').value=b.bank_name||'';
+  document.getElementById('bk-acc').value=b.bank_account||'';
+  document.getElementById('bk-own').value=b.bank_owner||'';
+  document.getElementById('bk-pre').value=b.topup_prefix||'NAP';
+  document.getElementById('bk-qr').value=b.bank_qr_url||'';
+}
+async function saveBank(){
+  await api('/api/admin/bank',{method:'POST',body:JSON.stringify({
+    bank_name:document.getElementById('bk-name').value,
+    bank_account:document.getElementById('bk-acc').value,
+    bank_owner:document.getElementById('bk-own').value,
+    topup_prefix:document.getElementById('bk-pre').value,
+    bank_qr_url:document.getElementById('bk-qr').value,
+  })});
+  const f = document.getElementById('bk-qr-file').files[0];
+  if(f){
+    const r = new FileReader();
+    r.onload = async ()=>{ const x = await api('/api/admin/bank/qr-upload',{method:'POST',body:JSON.stringify({data_url:r.result})}); document.getElementById('bk-qr').value=x.url; toast('QR đã upload'); };
+    r.readAsDataURL(f);
+  } else toast('Đã lưu');
+}
+</script>
+</body></html>
