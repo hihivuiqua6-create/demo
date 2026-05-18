@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: telegram-miniapp-platform
+    env: node
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: JWT_SECRET
+        generateValue: true
+      - key: PLATFORM_API_KEY
+        generateValue: true
+      - key: ADMIN_USERNAME
+        value: admin
+      - key: ADMIN_PASSWORD
+        value: Admin@123456
+      - key: DB_PATH
+        value: /tmp/platform.db
