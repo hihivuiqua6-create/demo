@@ -2,8 +2,7 @@ require('dotenv').config();
 const TelegramBot = require('node-telegram-bot-api');
 
 // dán TOKEN MỚI vào đây
-const token = "7854245357:AAGUnxhw1737o-x4bqPL9DkxZjBDqKkxnic
-";
+const token = "7854245357:AAGUnxhw1737o-x4bqPL9DkxZjBDqKkxnic";
 
 const bot = new TelegramBot(token,{
     polling:true
