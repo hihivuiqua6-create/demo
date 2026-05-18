@@ -1,0 +1,1002 @@
+<!doctype html>
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>TGBot · Admin v3</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<div id="gate">Đang tải bảng điều khiển…</div>
+
+<button class="menu-btn" id="menu-btn" onclick="document.querySelector('aside').classList.add('open');document.getElementById('scrim').classList.add('open')" aria-label="Menu"><span></span></button>
+<div class="scrim" id="scrim" onclick="document.querySelector('aside').classList.remove('open');this.classList.remove('open')"></div>
+<div class="layout" id="app" style="display:none">
+  <aside>
+    <div class="brand">
+      <div class="b">T</div>
+      <div>
+        <div class="t1">TGBot · Admin</div>
+        <div class="t2">Multi-bot control v3</div>
+      </div>
+    </div>
+
+    <div class="nav-h">Quản lý</div>
+    <nav class="nav">
+      <a data-tab="dashboard" class="active"><i class="i ic-dashboard"></i> Dashboard</a>
+      <a data-tab="bots"><i class="i ic-bot"></i> Bots</a>
+      <a data-tab="sellers"><i class="i ic-users"></i> Sellers</a>
+      <a data-tab="users"><i class="i ic-user"></i> Users</a>
+      <a data-tab="messages"><i class="i ic-message"></i> Tin nhắn</a>
+      <a data-tab="broadcast"><i class="i ic-send"></i> Broadcast</a>
+      <a data-tab="topups"><i class="i ic-wallet"></i> Nạp tiền</a>
+      <a data-tab="autorai"><i class="i ic-send"></i> Auto-Rải Bot</a>
+      <a data-tab="bank"><i class="i ic-bank"></i> Cấu hình bank</a>
+    </nav>
+
+    <div class="nav-h">Tài khoản</div>
+    <nav class="nav">
+      <a onclick="logout()"><i class="i ic-logout"></i> Đăng xuất</a>
+    </nav>
+
+    <div class="me">
+      <div class="av" id="me-av">A</div>
+      <div style="min-width:0">
+        <div class="nm" id="me-name">admin</div>
+        <div class="ro">v3.0 · administrator</div>
+      </div>
+    </div>
+  </aside>
+
+  <main>
+    <!-- DASHBOARD -->
+    <section data-page="dashboard" class="active">
+      <div class="topbar">
+        <div>
+          <h1 class="page">Dashboard</h1>
+          <p class="page-sub">Tổng quan hệ thống TGBot.</p>
+        </div>
+      </div>
+      <div class="cards" id="stats-cards"></div>
+
+      <div class="panel accent">
+        <h2><i class="i ic-alert warn"></i> Sellers sắp hết hạn (7 ngày tới)</h2>
+        <div id="expiring-soon"></div>
+      </div>
+    </section>
+
+    <!-- BOTS -->
+    <section data-page="bots">
+      <div class="topbar">
+        <div><h1 class="page">Quản lý Bot</h1><p class="page-sub">Tạo, sửa, bật/tắt và upload web cho bot Telegram.</p></div>
+        <button onclick="openBotModal()"><i class="i ic-plus"></i> Thêm bot</button>
+      </div>
+      <div class="panel">
+        <div class="table-wrap">
+          <table id="bots-tbl">
+            <thead><tr><th>#</th><th>Bot</th><th>Web</th><th>Auto-reply</th><th>Chủ sở hữu</th><th>Trạng thái</th><th></th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- SELLERS -->
+    <section data-page="sellers">
+      <div class="topbar">
+        <div><h1 class="page">Sellers</h1><p class="page-sub">Tài khoản đại lý — quản lý số dư, hạn dùng, khoá/mở.</p></div>
+        <button onclick="openSellerModal()"><i class="i ic-plus"></i> Thêm seller</button>
+      </div>
+      <div class="panel">
+        <div class="table-wrap">
+          <table id="sellers-tbl">
+            <thead><tr><th>#</th><th>Tài khoản</th><th>Tên hiển thị</th><th>Số dư</th><th>Hạn dùng</th><th>Trạng thái</th><th></th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- USERS -->
+    <section data-page="users">
+      <div class="topbar"><div><h1 class="page">Users của bot</h1><p class="page-sub">Danh sách người dùng đã tương tác với từng bot.</p></div></div>
+      <div class="panel">
+        <div class="row" style="margin-bottom:14px">
+          <select id="users-bot-filter"><option value="">— Tất cả bot —</option></select>
+          <input id="users-q" placeholder="Tìm username / tg id"/>
+          <button class="ghost" onclick="loadUsers()"><i class="i ic-arrow-right"></i> Tìm</button>
+        </div>
+        <div class="table-wrap">
+          <table id="users-tbl">
+            <thead><tr><th>Bot</th><th>User</th><th>TG ID</th><th>Tin nhắn</th><th>Lần cuối</th><th></th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- MESSAGES -->
+    <section data-page="messages">
+      <div class="topbar">
+        <div><h1 class="page">Tin nhắn</h1><p class="page-sub">Xem & xoá tin nhắn giữa bot và user.</p></div>
+        <button class="danger" onclick="nukeAllMessages()"><i class="i ic-trash"></i> Xoá toàn hệ thống</button>
+      </div>
+      <div class="panel">
+        <div class="row" style="margin-bottom:14px">
+          <select id="msg-bot"><option value="">— Chọn bot —</option></select>
+          <select id="msg-user"><option value="">— Chọn user —</option></select>
+          <button class="ghost" onclick="loadMessages()"><i class="i ic-arrow-right"></i> Tải</button>
+          <button class="danger hide" id="btn-clear-user" onclick="clearUserMsgs()"><i class="i ic-trash"></i> Xoá hết với user</button>
+          <button class="danger hide" id="btn-del-selected" onclick="deleteSelectedMsgs()"><i class="i ic-trash"></i> Xoá đã chọn (<span id="sel-cnt">0</span>)</button>
+        </div>
+        <div id="msg-list" class="msg-list"></div>
+      </div>
+    </section>
+
+    <!-- BROADCAST -->
+    <section data-page="broadcast">
+      <div class="topbar"><div><h1 class="page">Broadcast</h1><p class="page-sub">Gửi thông điệp hàng loạt tới user của bot.</p></div></div>
+      <div class="panel">
+        <div class="field"><label>Gửi tới bot</label>
+          <select id="bc-bot"><option value="">— Tất cả bot active —</option></select>
+        </div>
+        <div class="field"><label>Nội dung (HTML)</label>
+          <textarea id="bc-text" placeholder="<b>Khuyến mãi tháng này!</b>..."></textarea>
+        </div>
+        <button onclick="sendBroadcast()"><i class="i ic-send"></i> Gửi broadcast</button>
+      </div>
+      <div class="panel">
+        <h2><i class="i ic-history"></i> Lịch sử broadcast</h2>
+        <div class="table-wrap">
+          <table id="bc-tbl">
+            <thead><tr><th>ID</th><th>Bot</th><th>Total / Sent / Failed</th><th>Time</th><th>Nội dung</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TOPUPS -->
+    <section data-page="topups">
+      <div class="topbar"><div><h1 class="page">Yêu cầu nạp tiền</h1><p class="page-sub">Duyệt / từ chối yêu cầu nạp của seller.</p></div></div>
+      <div class="panel">
+        <div class="table-wrap">
+          <table id="topups-tbl">
+            <thead><tr><th>#</th><th>Seller</th><th>Số tiền</th><th>Mã CK</th><th>Trạng thái</th><th>Lúc</th><th></th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section data-page="autorai">
+      <div class="topbar"><div><h1 class="page">Auto-Rải Bot</h1><p class="page-sub">Một nơi để quản lý bot rải, acc gửi, link nhóm/kênh và tag @user.</p></div>
+        <div class="actions">
+          <button class="ghost" onclick="openAccLoginModal()"><i class="i ic-user"></i> Kết nối acc gửi</button>
+          <button onclick="openJobModal()"><i class="i ic-plus"></i> Thêm auto rải</button>
+        </div>
+      </div>
+
+      <div class="panel accent">
+        <h2><i class="i ic-send brand"></i> Auto rải bằng acc chính</h2>
+        <p class="hint">Dùng tài khoản Telegram đã kết nối để tự join link kênh/nhóm rồi gửi tin. Hỗ trợ thêm nhóm bằng @username/link t.me/chat_id và tag người dùng @username/user_id.</p>
+        <div class="table-wrap"><table id="jobs-tbl">
+          <thead><tr><th>ID</th><th>Tên</th><th>Acc gửi</th><th>Delay</th><th>Nội dung</th><th>Nhóm/Kênh</th><th>Trạng thái</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table></div>
+      </div>
+
+      <div class="panel">
+        <div class="topbar mini"><div><h2><i class="i ic-user"></i> Acc gửi đã kết nối</h2><p class="hint">Phần này nằm chung trong Auto-Rải Bot, không còn tách menu Tài khoản TG riêng.</p></div></div>
+        <div class="table-wrap"><table id="accounts-tbl">
+          <thead><tr><th>ID</th><th>Nhãn</th><th>SĐT</th><th>Owner</th><th>Kết nối</th><th>Active</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table></div>
+      </div>
+
+      <div class="panel">
+        <div class="topbar mini"><div><h2><i class="i ic-bot"></i> Bot rải bằng Bot API</h2><p class="hint">Chế độ cũ: bot phải được add vào kênh/nhóm rồi dùng lệnh /channel, /autoraitinnhan, /run.</p></div>
+          <button class="ghost" onclick="openAutoraiModal()"><i class="i ic-plus"></i> Thêm bot rải kiểu cũ</button>
+        </div>
+        <div class="table-wrap"><table id="autorai-tbl">
+          <thead><tr><th>ID</th><th>Bot</th><th>Owner</th><th>Key</th><th>Delay</th><th>Nội dung/Kênh</th><th>Trạng thái</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table></div>
+      </div>
+    </section>
+
+    <!-- BANK -->
+    <section data-page="bank">
+      <div class="topbar"><div><h1 class="page">Cấu hình ngân hàng</h1><p class="page-sub">Thông tin tài khoản nhận nạp & ảnh QR.</p></div></div>
+      <div class="panel">
+        <div class="grid2">
+          <div class="field"><label>Tên ngân hàng</label><input id="bk-name"/></div>
+          <div class="field"><label>Số tài khoản</label><input id="bk-acc"/></div>
+          <div class="field"><label>Chủ tài khoản</label><input id="bk-own"/></div>
+          <div class="field"><label>Prefix mã CK</label><input id="bk-pre"/></div>
+          <div class="field"><label>URL ảnh QR</label><input id="bk-qr"/></div>
+          <div class="field"><label>Upload ảnh QR</label><input type="file" id="bk-qr-file" accept="image/*"/></div>
+        </div>
+        <div style="margin-top:14px"><button onclick="saveBank()"><i class="i ic-check"></i> Lưu cấu hình</button></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- MODAL BOT -->
+<div class="modal" id="m-bot"><div class="box">
+  <button class="close-x" onclick="closeBotModal()"><i class="i sm ic-x"></i></button>
+  <h2 id="m-bot-title"><i class="i ic-bot brand"></i> Thêm bot</h2>
+  <input type="hidden" id="b-id"/>
+  <div class="field"><label>Bot token (BotFather)</label><input id="b-token" placeholder="123456:ABC-..."/></div>
+  <div class="grid2">
+    <div class="field"><label>Web URL (https) — trống nếu dùng ZIP</label><input id="b-url" placeholder="https://..."/></div>
+    <div class="field"><label>Chế độ web</label>
+      <select id="b-mode"><option value="url">URL</option><option value="zip">ZIP đã upload</option></select>
+    </div>
+  </div>
+  <div class="grid2">
+    <div class="field"><label>Nhãn nút menu</label><input id="b-label" placeholder="Mở Shop (Mini App)"/></div>
+    <div class="field"><label>Chủ sở hữu (seller id) — trống = admin</label><input id="b-owner" placeholder="vd 3"/></div>
+  </div>
+  <div class="field"><label>Public URL override (HTTPS) — fix nút Mini App khi dùng ZIP</label><input id="b-pubo" placeholder="https://your-domain.com"/></div>
+
+  <details class="acc" open><summary><i class="i sm ic-key"></i> License key (BẮT BUỘC để bot chạy)</summary>
+    <p class="hint">Bot chỉ chạy khi <b>server xác thực license đúng</b>. Mode local: HMAC(token) sinh sẵn ở Admin.</p>
+    <div class="row">
+      <input id="b-license" placeholder="LICENSE KEY (chữ hoa)"/>
+      <button class="ghost" onclick="autoLicense()"><i class="i sm ic-key"></i> Sinh tự động</button>
+      <button onclick="saveLicense()"><i class="i sm ic-check"></i> Cấp & kiểm tra</button>
+      <button class="danger" onclick="revokeLicense()"><i class="i sm ic-trash"></i> Thu hồi</button>
+    </div>
+    <div id="b-license-info" class="hint" style="margin-top:6px"></div>
+  </details>
+
+  <details class="acc"><summary><i class="i sm ic-edit"></i> Welcome message (/start)</summary>
+    <p class="hint">Biến: <code>{full_name} {first_name} {username} {monthly_users}</code>. HTML cho phép <code>&lt;b&gt;</code>.</p>
+    <textarea id="b-welcome" placeholder="Để trống = mặc định"></textarea>
+  </details>
+
+  <details class="acc"><summary><i class="i sm ic-bot"></i> Auto-reply (bot RIÊNG với mini-app)</summary>
+    <p class="hint">Để token <b>auto-reply</b> KHÁC token mini-app → 2 bot chạy độc lập. Bỏ trống = dùng chung bot mini-app.</p>
+    <div class="grid2">
+      <div class="field"><label>Auto-reply bot token (tách biệt)</label><input id="b-ar-token" placeholder="bot khác BotFather, để trống = chung"/></div>
+      <div class="field"><label>Số lần rep / 1 tin nhắn (1–20)</label><input id="b-ar-count" type="number" min="1" max="20" placeholder="1"/></div>
+    </div>
+    <div class="field"><label>Controller TG ID (chỉ user này được dùng /autorep, /autorep_off)</label><input id="b-ctrl" placeholder="vd 123456789"/></div>
+    <label class="chk"><input type="checkbox" id="b-ar-en"/> Bật auto-reply</label>
+    <textarea id="b-ar-text" placeholder="Nội dung trả lời (để trống = mặc định). Có thể chỉnh bằng /autorep nội_dung | số_lần"></textarea>
+    <p class="hint">Lệnh trong chat bot: <code>/autorep nội dung cần rep | 3</code> · <code>/autorep_off</code></p>
+    <div id="b-ar-ex-wrap" class="hide" style="margin-top:12px">
+      <div class="muted" style="margin-bottom:6px">Ngoại lệ (TG user ID không nhận auto-reply):</div>
+      <div id="b-ar-ex-list"></div>
+      <div class="row" style="margin-top:8px">
+        <input id="b-ar-ex-uid" placeholder="TG user ID" style="max-width:180px"/>
+        <input id="b-ar-ex-note" placeholder="Ghi chú"/>
+        <button class="ghost" onclick="addException()"><i class="i sm ic-plus"></i> Thêm</button>
+      </div>
+    </div>
+  </details>
+
+  <details class="acc" id="b-zip-wrap"><summary><i class="i sm ic-upload"></i> Upload nguồn web (ZIP / Folder · HTML hoặc PHP)</summary>
+    <p class="hint">Cần <code>index.html</code> / <code>index.htm</code> / <code>index.php</code> ở thư mục gốc (hoặc trong 1 thư mục bao ngoài). PHP serve dạng tĩnh (không thực thi).</p>
+    <div class="row">
+      <input type="file" id="b-zip-file" accept=".zip"/>
+      <button class="ghost" onclick="uploadZip()"><i class="i sm ic-upload"></i> Upload ZIP</button>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <input type="file" id="b-folder-file" webkitdirectory directory multiple/>
+      <button class="ghost" onclick="uploadFolder()"><i class="i sm ic-upload"></i> Upload Folder</button>
+      <button class="danger" onclick="removeZip()"><i class="i sm ic-trash"></i> Xoá site hosted</button>
+    </div>
+    <div id="b-zip-info" class="hint" style="margin-top:8px"></div>
+  </details>
+
+  <div class="foot">
+    <button class="ghost" onclick="closeBotModal()">Huỷ</button>
+    <button onclick="saveBot()"><i class="i ic-check"></i> Lưu</button>
+  </div>
+</div></div>
+
+<!-- MODAL SELLER -->
+<div class="modal" id="m-seller"><div class="box">
+  <button class="close-x" onclick="closeSellerModal()"><i class="i sm ic-x"></i></button>
+  <h2><i class="i ic-users brand"></i> Thêm seller</h2>
+  <input type="hidden" id="s-id"/>
+  <div class="grid2">
+    <div class="field"><label>Username</label><input id="s-user"/></div>
+    <div class="field"><label>Mật khẩu (≥6)</label><input id="s-pass" type="text"/></div>
+    <div class="field"><label>Tên hiển thị</label><input id="s-name"/></div>
+    <div class="field"><label>Hạn dùng (số ngày, trống = vĩnh viễn)</label><input id="s-days" type="number" placeholder="30"/></div>
+    <div class="field"><label>Gán bot quản lý ngay (bot id, trống = không gán)</label><input id="s-bot" type="number" placeholder="vd 2"/></div>
+    <div class="field" style="grid-column:1/-1"><label>List @bot mà seller cần quản lí (mỗi @bot 1 dòng hoặc cách nhau bởi dấu phẩy)</label><textarea id="s-managed" placeholder="@my_bot1, @my_bot2"></textarea></div>
+  </div>
+  <div class="foot">
+    <button class="ghost" onclick="closeSellerModal()">Huỷ</button>
+    <button onclick="saveSeller()"><i class="i ic-check"></i> Lưu</button>
+  </div>
+</div></div>
+
+<!-- MODAL AUTORAI -->
+<div class="modal" id="m-autorai"><div class="box">
+  <button class="close-x" onclick="document.getElementById('m-autorai').classList.remove('open')"><i class="i sm ic-x"></i></button>
+  <h2><i class="i ic-send brand"></i> Thêm Auto-Rải Bot</h2>
+  <input type="hidden" id="ar-id"/>
+  <div class="field"><label>Bot token (BotFather — bot RIÊNG, không phải bot mini-app)</label><input id="ar-token" placeholder="123456:ABC-..."/></div>
+  <div class="grid2">
+    <div class="field"><label>Delay vòng (giây, ≥1, có thể để 1 = gửi liên tục)</label><input id="ar-delay" type="number" value="30"/></div>
+    <div class="field"><label>Delay giữa các kênh/mục (giây, ≥0)</label><input id="ar-ldelay" type="number" value="2"/></div>
+    <div class="field"><label>Owner seller id (trống = admin)</label><input id="ar-owner" type="number"/></div>
+    <div class="field"><label>License key (trống = tự sinh)</label><input id="ar-key" placeholder="auto"/></div>
+  </div>
+  <div id="ar-info" class="hint"></div>
+  <div class="foot">
+    <button class="ghost" onclick="document.getElementById('m-autorai').classList.remove('open')">Huỷ</button>
+    <button onclick="saveAutorai()"><i class="i ic-check"></i> Lưu</button>
+  </div>
+</div></div>
+
+<!-- MODAL ACCOUNT LOGIN -->
+<div class="modal" id="m-acc"><div class="box">
+  <button class="close-x" onclick="document.getElementById('m-acc').classList.remove('open')"><i class="i sm ic-x"></i></button>
+  <h2><i class="i ic-user brand"></i> Đăng nhập tài khoản Telegram</h2>
+  <p class="hint">Đây là acc chính đứng ra gửi tin trong mục Auto-Rải Bot. Lấy <b>api_id</b> & <b>api_hash</b> tại <a href="https://my.telegram.org" target="_blank">my.telegram.org</a> → API development tools.</p>
+  <div class="grid2">
+    <div class="field"><label>Nhãn (gợi nhớ)</label><input id="acc-label" placeholder="Acc bán hàng 1"/></div>
+    <div class="field"><label>Số điện thoại (có mã quốc gia, vd +84xxx)</label><input id="acc-phone" placeholder="+84xxxxxxxxx"/></div>
+    <div class="field"><label>api_id</label><input id="acc-apiid" type="number"/></div>
+    <div class="field"><label>api_hash</label><input id="acc-apihash"/></div>
+    <div class="field"><label>Owner seller id (trống = admin)</label><input id="acc-owner" type="number"/></div>
+  </div>
+  <div class="foot">
+    <button class="ghost" onclick="document.getElementById('m-acc').classList.remove('open')">Huỷ</button>
+    <button onclick="accSendCode()"><i class="i ic-send"></i> Gửi mã</button>
+  </div>
+  <hr/>
+  <div id="acc-step2" style="display:none">
+    <p class="hint">Telegram đã gửi mã vào app/SMS. Nhập mã + 2FA password (nếu có).</p>
+    <div class="grid2">
+      <div class="field"><label>Mã xác nhận</label><input id="acc-code"/></div>
+      <div class="field"><label>2FA password (nếu có)</label><input id="acc-pw" type="password"/></div>
+    </div>
+    <div class="foot"><button onclick="accConfirm()"><i class="i ic-check"></i> Xác nhận đăng nhập</button></div>
+  </div>
+</div></div>
+
+<!-- MODAL ACC JOB -->
+<div class="modal" id="m-job"><div class="box">
+  <button class="close-x" onclick="document.getElementById('m-job').classList.remove('open')"><i class="i sm ic-x"></i></button>
+  <h2 id="m-job-title"><i class="i ic-send brand"></i> Thêm Auto rải</h2>
+  <input type="hidden" id="job-id"/>
+  <div class="grid2">
+    <div class="field"><label>Tên auto rải</label><input id="job-name" placeholder="VD: Rải link sản phẩm A"/></div>
+    <div class="field"><label>Acc chính dùng để gửi</label><select id="job-acc"></select></div>
+    <div class="field"><label>Delay vòng (giây, đặt 0 = gửi liên tục)</label><input id="job-delay" type="number" step="0.1" value="30"/></div>
+    <div class="field"><label>Delay giữa các kênh (giây, đặt 0 = gửi liền)</label><input id="job-ldelay" type="number" step="0.1" value="0"/></div>
+  </div>
+  <div class="field"><label>Nội dung (mỗi dòng = 1 nội dung, sẽ xoay vòng)</label><textarea id="job-contents" rows="5" placeholder="Tin nhắn 1&#10;Tin nhắn 2 ..."></textarea></div>
+  <div class="field"><label>Thêm nhóm/kênh đích (mỗi dòng: @username, link t.me/..., invite link, hoặc chat_id)</label><textarea id="job-channels" rows="4" placeholder="@nhom1&#10;-1001234567890&#10;https://t.me/abcxyz&#10;https://t.me/+inviteCode"></textarea></div>
+  <label class="checkline"><input id="job-autojoin" type="checkbox" checked/><div><b>Tự join kênh/nhóm trước khi gửi</b><span>Dùng cho link public/private invite. Tài khoản Telegram sẽ tự vào nếu link hợp lệ và chưa bị giới hạn.</span></div></label>
+  <div class="field"><label>Tag người dùng @ (mỗi dòng 1 @username, link t.me/user, hoặc user_id)</label><textarea id="job-mentions" rows="3" placeholder="@user1&#10;@user2&#10;123456789"></textarea></div>
+  <div class="grid2">
+    <div class="field"><label>Chế độ tag</label>
+      <select id="job-mmode">
+        <option value="append">Tự nối vào cuối tin nhắn</option>
+        <option value="placeholder">Thay vào {mentions} trong nội dung</option>
+      </select>
+    </div>
+    <div class="field"><label>Số user tag mỗi lần (0 = tất cả)</label><input id="job-mps" type="number" value="0"/></div>
+  </div>
+  <p class="hint">⚠️ Bật tự join để tài khoản tự vào kênh/nhóm từ link trước khi gửi. Với nhóm/kênh riêng tư, link invite phải còn hiệu lực; Telegram vẫn có thể giới hạn nếu join/gửi quá nhanh. Nên đặt delay an toàn.</p>
+  <div class="foot">
+    <button class="ghost" onclick="document.getElementById('m-job').classList.remove('open')">Huỷ</button>
+    <button onclick="saveJob()"><i class="i ic-check"></i> Lưu</button>
+  </div>
+</div></div>
+
+<div id="toast-root"></div>
+
+
+
+<script>
+const T = localStorage.getItem('tg_token');
+if(!T) location.href='/login';
+const H = {'Authorization':'Bearer '+T,'Content-Type':'application/json'};
+
+function toast(m,kind){
+  const t=document.createElement('div');
+  t.className='toast '+(kind||'');
+  const ic = kind==='err'?'ic-alert':(kind==='ok'?'ic-check':'ic-info');
+  t.innerHTML='<i class="i '+ic+'"></i><span>'+m+'</span>';
+  document.body.appendChild(t);
+  setTimeout(()=>{t.style.opacity='0';t.style.transform='translateX(20px)';setTimeout(()=>t.remove(),300)},2400);
+}
+async function api(p,o={}){ const r=await fetch(p,{...o,headers:{...H,...(o.headers||{})}}); const d=await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.error||('HTTP '+r.status)); return d; }
+function logout(){ localStorage.clear(); location.href='/login'; }
+const fmt = (n)=> (n||0).toLocaleString('vi-VN');
+const dt  = (s)=> s ? new Date(s).toLocaleString('vi-VN') : '—';
+const daysLeft = (s) => { if(!s) return '∞'; const d=Math.ceil((new Date(s)-Date.now())/86400000); return d<=0?'hết':(d+'d'); };
+
+// nav
+document.querySelectorAll('.nav [data-tab]').forEach(a=>{
+  a.onclick = ()=>{
+    document.querySelectorAll('.nav a').forEach(x=>x.classList.remove('active'));
+    a.classList.add('active');
+    document.querySelector('aside').classList.remove('open');
+    document.getElementById('scrim').classList.remove('open');
+    const tab = a.dataset.tab;
+    document.querySelectorAll('[data-page]').forEach(p=>p.classList.remove('active'));
+    document.querySelector(`[data-page="${tab}"]`).classList.add('active');
+    if(tab==='dashboard') loadStats();
+    if(tab==='bots') loadBots();
+    if(tab==='sellers') loadSellers();
+    if(tab==='users') loadUsers();
+    if(tab==='messages') loadMsgBots();
+    if(tab==='broadcast'){ loadBroadcastBots(); loadBroadcastHist(); }
+    if(tab==='topups') loadTopups();
+    if(tab==='bank') loadBank();
+    if(tab==='autorai'){ loadAutorai(); loadAccounts(); loadAccountsForSelect(); loadJobs(); }
+  };
+});
+
+// ME + INIT
+(async()=>{
+  try{
+    const me=await api('/api/me');
+    document.getElementById('me-name').textContent=me.username||'admin';
+    document.getElementById('me-av').textContent=(me.username||'A').slice(0,1).toUpperCase();
+  }catch{}
+  document.getElementById('gate').remove();
+  document.getElementById('app').style.display='';
+  try{ await loadStats(); }catch(e){ toast(e.message,'err'); }
+})();
+
+// ====== DASHBOARD ======
+async function loadStats(){
+  const s = await api('/api/stats');
+  const cards = [
+    ['Bots',         s.bots,             s.bots_active+' active',           'ic-bot'],
+    ['Sellers',      s.sellers,          s.sellers_expiring_7d+' sắp hết hạn','ic-users'],
+    ['Users',        fmt(s.users),       fmt(s.users_monthly)+' /tháng',     'ic-user'],
+    ['Tin nhắn',     fmt(s.messages),    'đã ghi nhận',                      'ic-message'],
+    ['Yêu cầu nạp',  s.topups_pending,   'đang chờ duyệt',                   'ic-wallet'],
+  ];
+  document.getElementById('stats-cards').innerHTML = cards.map(([l,n,sub,ic])=>
+    `<div class="card"><div class="k"><i class="i sm ${ic}"></i>${l}</div><div class="v">${n}</div><div class="trend">${sub}</div></div>`).join('');
+
+  const sellers = await api('/api/admin/sellers');
+  const soon = sellers.filter(s=>s.expires_at && (new Date(s.expires_at)-Date.now()) < 7*86400000);
+  document.getElementById('expiring-soon').innerHTML = soon.length
+    ? `<div class="table-wrap"><table><thead><tr><th>Seller</th><th>Hết hạn</th><th>Còn</th></tr></thead><tbody>${soon.map(s=>`<tr><td><b>${s.username}</b></td><td>${dt(s.expires_at)}</td><td><span class="badge warn">${daysLeft(s.expires_at)}</span></td></tr>`).join('')}</tbody></table></div>`
+    : '<div class="empty"><i class="i ic-check"></i>Không có seller nào sắp hết hạn.</div>';
+}
+
+// ====== BOTS ======
+let allBots=[], allSellers=[];
+async function loadBots(){
+  allBots = await api('/api/bots');
+  const tb = document.querySelector('#bots-tbl tbody');
+  tb.innerHTML = allBots.length ? allBots.map(b=>`
+    <tr>
+      <td>${b.id}</td>
+      <td><b>@${b.bot_username||'?'}</b></td>
+      <td><a href="${b.effective_url||'#'}" target="_blank">${b.effective_url||'—'}</a><br><span class="badge ${b.web_mode==='zip'?'warn':'info'}">${b.web_mode||'url'}</span></td>
+      <td>${b.auto_reply_enabled?'<span class="badge ok">ON</span>':'<span class="badge bad">OFF</span>'}</td>
+      <td>${b.owner_username?'<b>'+b.owner_username+'</b>':'<span class="muted">admin</span>'}</td>
+      <td>${b.active?'<span class="badge ok">Active</span>':'<span class="badge bad">Stopped</span>'}</td>
+      <td><div class="actions">
+        <button class="ghost sm icon-only" title="Sửa" onclick='editBot(${b.id})'><i class="i sm ic-edit"></i></button>
+        <button class="ghost sm icon-only" title="${b.active?'Tắt':'Bật'}" onclick='toggleBot(${b.id},${b.active?0:1})'><i class="i sm ic-power"></i></button>
+        <button class="danger sm icon-only" title="Xoá" onclick='delBot(${b.id})'><i class="i sm ic-trash"></i></button>
+      </div></td>
+    </tr>`).join('') : '<tr><td colspan="7"><div class="empty"><i class="i ic-bot"></i>Chưa có bot nào.</div></td></tr>';
+}
+function openBotModal(){
+  document.getElementById('m-bot-title').innerHTML='<i class="i ic-bot brand"></i> Thêm bot';
+  ['b-id','b-token','b-url','b-label','b-owner','b-welcome','b-ar-text','b-ar-ex-uid','b-ar-ex-note','b-ar-token','b-ar-count','b-ctrl','b-pubo','b-license'].forEach(i=>{ const el=document.getElementById(i); if(el) el.value=''; });
+  document.getElementById('b-mode').value='url';
+  document.getElementById('b-ar-en').checked=false;
+  document.getElementById('b-ar-ex-wrap').classList.add('hide');
+  document.getElementById('b-zip-wrap').classList.add('hide');
+  document.getElementById('b-license-info').textContent='Tạo bot xong, vào sửa để cấp license.';
+  document.getElementById('m-bot').classList.add('open');
+}
+function closeBotModal(){ document.getElementById('m-bot').classList.remove('open'); }
+function editBot(id){
+  const b = allBots.find(x=>x.id===id);
+  document.getElementById('m-bot-title').innerHTML='<i class="i ic-edit brand"></i> Sửa bot #'+id;
+  document.getElementById('b-id').value=id;
+  document.getElementById('b-token').value=b.token||'';
+  document.getElementById('b-url').value=b.web_url||'';
+  document.getElementById('b-mode').value=b.web_mode||'url';
+  document.getElementById('b-label').value=b.button_label||'';
+  document.getElementById('b-owner').value=b.owner_seller_id||'';
+  document.getElementById('b-welcome').value=b.welcome||'';
+  document.getElementById('b-ar-en').checked=!!b.auto_reply_enabled;
+  document.getElementById('b-ar-text').value=b.auto_reply_text||'';
+  document.getElementById('b-ar-token').value=b.autoreply_token||'';
+  document.getElementById('b-ar-count').value=b.autoreply_count||1;
+  document.getElementById('b-ctrl').value=b.controller_tg_id||'';
+  document.getElementById('b-pubo').value=b.public_url_override||'';
+  document.getElementById('b-license').value=b.license_key||'';
+  document.getElementById('b-license-info').innerHTML = b.license_valid
+    ? '<span class="badge ok">✓ License hợp lệ</span> · checked: '+ (b.license_checked_at||'—')
+    : '<span class="badge bad">✗ Chưa có license / không hợp lệ</span> — bot SẼ KHÔNG chạy.';
+  document.getElementById('b-ar-ex-wrap').classList.remove('hide');
+  document.getElementById('b-zip-wrap').classList.remove('hide');
+  document.getElementById('b-zip-info').textContent = b.web_zip_dir ? ('Đang host: /site/'+id+'/ · kind: '+(b.web_kind||'html')) : 'Chưa upload nguồn web.';
+  loadExceptions(id);
+  document.getElementById('m-bot').classList.add('open');
+}
+async function saveBot(){
+  const id = document.getElementById('b-id').value;
+  const body = {
+    token: document.getElementById('b-token').value.trim(),
+    web_url: document.getElementById('b-url').value.trim(),
+    web_mode: document.getElementById('b-mode').value,
+    button_label: document.getElementById('b-label').value.trim(),
+    owner_seller_id: document.getElementById('b-owner').value || null,
+    welcome: document.getElementById('b-welcome').value,
+    auto_reply_enabled: document.getElementById('b-ar-en').checked,
+    auto_reply_text: document.getElementById('b-ar-text').value,
+    autoreply_token: document.getElementById('b-ar-token').value.trim() || null,
+    autoreply_count: Number(document.getElementById('b-ar-count').value)||1,
+    controller_tg_id: document.getElementById('b-ctrl').value || null,
+    public_url_override: document.getElementById('b-pubo').value.trim() || null,
+  };
+  try{
+    if(id) await api('/api/bots/'+id, {method:'PATCH', body:JSON.stringify(body)});
+    else { const r = await api('/api/bots', {method:'POST', body:JSON.stringify(body)}); toast('Đã tạo bot #'+r.id+'. Hãy cấp license để chạy.','ok'); }
+    toast('Đã lưu','ok'); closeBotModal(); loadBots();
+  }catch(e){ toast(e.message,'err'); }
+}
+async function autoLicense(){
+  const id = document.getElementById('b-id').value;
+  if(!id) return toast('Lưu bot trước đã','err');
+  const r = await api('/api/admin/bots/'+id+'/license/expected');
+  document.getElementById('b-license').value = r.expected;
+  toast('Đã sinh key ('+r.mode+'). Bấm "Cấp & kiểm tra".','info');
+}
+async function saveLicense(){
+  const id = document.getElementById('b-id').value;
+  if(!id) return toast('Lưu bot trước đã','err');
+  const key = document.getElementById('b-license').value.trim();
+  try{
+    const r = await api('/api/admin/bots/'+id+'/license',{method:'POST',body:JSON.stringify({license_key:key})});
+    document.getElementById('b-license-info').innerHTML = r.valid
+      ? '<span class="badge ok">✓ License hợp lệ — bot đã (tái) khởi động</span>'
+      : '<span class="badge bad">✗ License KHÔNG hợp lệ — bot bị dừng</span>';
+    loadBots();
+  }catch(e){ toast(e.message,'err'); }
+}
+async function revokeLicense(){
+  const id = document.getElementById('b-id').value;
+  if(!id || !confirm('Thu hồi license? Bot sẽ DỪNG ngay.')) return;
+  await api('/api/admin/bots/'+id+'/license/revoke',{method:'POST'});
+  document.getElementById('b-license').value='';
+  document.getElementById('b-license-info').innerHTML = '<span class="badge bad">✗ Đã thu hồi</span>';
+  loadBots();
+}
+async function toggleBot(id,active){ await api('/api/bots/'+id,{method:'PATCH',body:JSON.stringify({active})}); loadBots(); }
+async function delBot(id){ if(!confirm('Xoá bot #'+id+' và toàn bộ dữ liệu?')) return; await api('/api/bots/'+id,{method:'DELETE'}); toast('Đã xoá','ok'); loadBots(); }
+async function loadExceptions(id){
+  const list = await api('/api/bots/'+id+'/autoreply/exceptions');
+  document.getElementById('b-ar-ex-list').innerHTML = list.length
+    ? list.map(e=>`<div class="flex" style="margin-top:6px"><span class="badge info">${e.tg_user_id}</span><span class="muted">${e.username||e.first_name||''} ${e.note?'· '+e.note:''}</span><button class="danger sm icon-only" onclick="delException(${id},${e.id})"><i class="i sm ic-x"></i></button></div>`).join('')
+    : '<div class="muted">Chưa có ngoại lệ.</div>';
+}
+async function addException(){
+  const id = document.getElementById('b-id').value;
+  if(!id){ toast('Lưu bot trước đã','err'); return; }
+  const uid = Number(document.getElementById('b-ar-ex-uid').value);
+  if(!uid) return;
+  try{ await api('/api/bots/'+id+'/autoreply/exceptions',{method:'POST',body:JSON.stringify({tg_user_id:uid,note:document.getElementById('b-ar-ex-note').value})}); loadExceptions(id); document.getElementById('b-ar-ex-uid').value=''; document.getElementById('b-ar-ex-note').value=''; }catch(e){ toast(e.message,'err'); }
+}
+async function delException(botId,exId){ await api(`/api/bots/${botId}/autoreply/exceptions/${exId}`,{method:'DELETE'}); loadExceptions(botId); }
+async function uploadZip(){
+  const id = document.getElementById('b-id').value;
+  if(!id){ toast('Lưu bot trước đã','err'); return; }
+  const f = document.getElementById('b-zip-file').files[0];
+  if(!f) return toast('Chọn file zip','err');
+  const fd = new FormData(); fd.append('zip', f);
+  try{
+    const r = await fetch('/api/bots/'+id+'/site-zip',{method:'POST',headers:{'Authorization':'Bearer '+T},body:fd});
+    const d = await r.json(); if(!r.ok) throw new Error(d.error||'Lỗi');
+    document.getElementById('b-zip-info').innerHTML = `Hosted: <a href="${d.url}" target="_blank">${d.url}</a> · ${d.files} files · kind=<b>${d.kind}</b>${d.php_warning?'<br><span class="badge warn">⚠ '+d.php_warning+'</span>':''}`;
+    document.getElementById('b-mode').value='zip';
+    toast('Upload OK','ok');
+  }catch(e){ toast(e.message,'err'); }
+}
+function fileToB64(file){
+  return new Promise((res,rej)=>{
+    const r = new FileReader();
+    r.onload = ()=> res(String(r.result).split(',')[1]||'');
+    r.onerror = ()=> rej(r.error);
+    r.readAsDataURL(file);
+  });
+}
+async function uploadFolder(){
+  const id = document.getElementById('b-id').value;
+  if(!id){ toast('Lưu bot trước đã','err'); return; }
+  const files = Array.from(document.getElementById('b-folder-file').files||[]);
+  if(!files.length) return toast('Chọn folder','err');
+  toast('Đang đóng gói '+files.length+' file…','info');
+  const arr = [];
+  for(const f of files){
+    const b64 = await fileToB64(f);
+    arr.push({ path: f.webkitRelativePath || f.name, content_b64: b64 });
+  }
+  try{
+    const d = await api('/api/bots/'+id+'/site-folder',{method:'POST',body:JSON.stringify({files:arr})});
+    document.getElementById('b-zip-info').innerHTML = `Hosted: <a href="${d.url}" target="_blank">${d.url}</a> · ${d.files} files · kind=<b>${d.kind}</b>${d.php_warning?'<br><span class="badge warn">⚠ '+d.php_warning+'</span>':''}`;
+    document.getElementById('b-mode').value='zip';
+    toast('Upload folder OK','ok');
+  }catch(e){ toast(e.message,'err'); }
+}
+async function removeZip(){
+  const id = document.getElementById('b-id').value;
+  if(!id || !confirm('Xoá web hosted?')) return;
+  await api('/api/bots/'+id+'/site-zip',{method:'DELETE'});
+  document.getElementById('b-zip-info').textContent='Đã xoá.';
+  document.getElementById('b-mode').value='url';
+}
+
+// ====== SELLERS ======
+async function loadSellers(){
+  allSellers = await api('/api/admin/sellers');
+  document.querySelector('#sellers-tbl tbody').innerHTML = allSellers.length ? allSellers.map(s=>`
+    <tr>
+      <td>${s.id}</td><td><b>${s.username}</b></td><td>${s.display_name||''}</td>
+      <td><b>${fmt(s.balance)}đ</b></td>
+      <td>${s.expires_at?dt(s.expires_at)+` <span class="badge warn">${daysLeft(s.expires_at)}</span>`:'<span class="badge ok">∞</span>'}</td>
+      <td>${s.active?'<span class="badge ok">Active</span>':'<span class="badge bad">Khoá</span>'}</td>
+      <td><div class="actions">
+        <button class="ghost sm" onclick="addDays(${s.id})"><i class="i sm ic-history"></i> Ngày</button>
+        <button class="ghost sm" onclick="adjustBalance(${s.id})"><i class="i sm ic-coin"></i></button>
+        <button class="ghost sm" onclick="resetPass(${s.id})"><i class="i sm ic-key"></i></button>
+        <button class="ghost sm icon-only" onclick="toggleSeller(${s.id},${s.active?0:1})"><i class="i sm ic-power"></i></button>
+        <button class="danger sm icon-only" onclick="delSeller(${s.id})"><i class="i sm ic-trash"></i></button>
+      </div></td>
+    </tr>`).join('') : '<tr><td colspan="7"><div class="empty"><i class="i ic-users"></i>Chưa có seller.</div></td></tr>';
+}
+function openSellerModal(){
+  ['s-user','s-pass','s-name','s-days','s-bot','s-managed'].forEach(i=>{ const el=document.getElementById(i); if(el) el.value=''; });
+  document.getElementById('m-seller').classList.add('open');
+}
+function closeSellerModal(){ document.getElementById('m-seller').classList.remove('open'); }
+async function saveSeller(){
+  try{
+    await api('/api/admin/sellers',{method:'POST',body:JSON.stringify({
+      username:document.getElementById('s-user').value.trim(),
+      password:document.getElementById('s-pass').value,
+      display_name:document.getElementById('s-name').value,
+      days: Number(document.getElementById('s-days').value)||null,
+      assign_bot_id: Number(document.getElementById('s-bot').value)||null,
+      managed_bot_usernames: document.getElementById('s-managed').value,
+    })});
+    toast('Đã tạo','ok'); closeSellerModal(); loadSellers(); loadBots();
+  }catch(e){ toast(e.message,'err'); }
+}
+
+// ====== AUTORAI ======
+let allAutorai=[];
+async function loadAutorai(){
+  allAutorai = await api('/api/autorai');
+  const tb = document.querySelector('#autorai-tbl tbody');
+  tb.innerHTML = allAutorai.length ? allAutorai.map(a=>`
+    <tr>
+      <td>${a.id}</td>
+      <td><b>@${a.bot_username||'?'}</b><br><span class="muted">ctrl: ${a.controller_tg_id||'—'}</span></td>
+      <td>${a.owner_username?'<b>'+a.owner_username+'</b>':'<span class="muted">admin</span>'}</td>
+      <td><code>${a.license_key||'—'}</code> ${a.license_valid?'<span class="badge ok">valid</span>':'<span class="badge bad">chưa /key</span>'}</td>
+      <td>vòng <b>${a.delay_seconds}s</b><br>list <b>${a.list_delay_seconds}s</b></td>
+      <td>${(a.contents||[]).length} nd / ${(a.channels||[]).length} kênh</td>
+      <td>${a.running?'<span class="badge ok">▶ Running</span>':'<span class="badge warn">⏹ Stopped</span>'} ${a.active?'':'<span class="badge bad">inactive</span>'}</td>
+      <td><div class="actions">
+        <button class="ghost sm" onclick="arSetDelay(${a.id})"><i class="i sm ic-edit"></i> Delay</button>
+        <button class="ghost sm" onclick="arRegenKey(${a.id})"><i class="i sm ic-key"></i> Key</button>
+        <button class="ghost sm" onclick="arToggleRun(${a.id},${a.running?0:1})"><i class="i sm ic-power"></i></button>
+        <button class="danger sm icon-only" onclick="arDel(${a.id})"><i class="i sm ic-trash"></i></button>
+      </div></td>
+    </tr>`).join('') : '<tr><td colspan="8"><div class="empty"><i class="i ic-send"></i>Chưa có Auto-Rải bot.</div></td></tr>';
+}
+function openAutoraiModal(){
+  ['ar-id','ar-token','ar-owner','ar-key'].forEach(i=>document.getElementById(i).value='');
+  document.getElementById('ar-delay').value=30;
+  document.getElementById('ar-ldelay').value=2;
+  document.getElementById('ar-info').textContent='Tạo bot xong, key sẽ hiện ra. Trong Telegram dùng /key <KEY> để xác thực.';
+  document.getElementById('m-autorai').classList.add('open');
+}
+async function saveAutorai(){
+  try{
+    const r = await api('/api/autorai',{method:'POST',body:JSON.stringify({
+      token: document.getElementById('ar-token').value.trim(),
+      delay_seconds: Number(document.getElementById('ar-delay').value)||30,
+      list_delay_seconds: Number(document.getElementById('ar-ldelay').value)||2,
+      owner_seller_id: Number(document.getElementById('ar-owner').value)||null,
+      license_key: document.getElementById('ar-key').value.trim()||null,
+      auto_generate_key: !document.getElementById('ar-key').value.trim(),
+    })});
+    toast('Tạo OK. KEY: '+r.license_key,'ok');
+    document.getElementById('m-autorai').classList.remove('open');
+    loadAutorai();
+  }catch(e){ toast(e.message,'err'); }
+}
+async function arSetDelay(id){
+  const a = allAutorai.find(x=>x.id===id);
+  const d = Number(prompt('Delay vòng (giây, ≥1, có thể để 1 = gửi liên tục):', a.delay_seconds)); if(!Number.isFinite(d)||d<1) return;
+  const ld = Number(prompt('Delay giữa các kênh/mục (giây, ≥0):', a.list_delay_seconds)); if(!Number.isFinite(ld)||ld<0) return;
+  await api('/api/autorai/'+id,{method:'PATCH',body:JSON.stringify({delay_seconds:d, list_delay_seconds:ld})});
+  loadAutorai();
+}
+async function arRegenKey(id){
+  if(!confirm('Sinh lại key? Controller cũ sẽ bị reset, phải /key lại trong Telegram.')) return;
+  const r = await api('/api/admin/autorai/'+id+'/key');
+  await api('/api/autorai/'+id,{method:'PATCH',body:JSON.stringify({regenerate_key:true})});
+  alert('KEY mới: '+r.expected);
+  loadAutorai();
+}
+async function arToggleRun(id,v){ await api('/api/autorai/'+id,{method:'PATCH',body:JSON.stringify({running:v})}); loadAutorai(); }
+async function arDel(id){ if(!confirm('Xoá Auto-Rải bot #'+id+'?')) return; await api('/api/autorai/'+id,{method:'DELETE'}); loadAutorai(); }
+async function addDays(id){ const d=Number(prompt('Thêm bao nhiêu ngày?','30')); if(!Number.isFinite(d)||d<1) return; await api('/api/admin/sellers/'+id,{method:'PATCH',body:JSON.stringify({add_days:d})}); loadSellers(); }
+async function adjustBalance(id){ const d=Number(prompt('Cộng/trừ số tiền (vd 100000 hoặc -50000):','100000')); if(!Number.isFinite(d)||d===0) return; await api('/api/admin/sellers/'+id,{method:'PATCH',body:JSON.stringify({balance_delta:d})}); loadSellers(); }
+async function resetPass(id){ const p=prompt('Mật khẩu mới (≥6):'); if(!p||p.length<6) return; await api('/api/admin/sellers/'+id,{method:'PATCH',body:JSON.stringify({password:p})}); toast('OK','ok'); }
+async function toggleSeller(id,active){ await api('/api/admin/sellers/'+id,{method:'PATCH',body:JSON.stringify({active})}); loadSellers(); }
+async function delSeller(id){ if(!confirm('XOÁ seller #'+id+' và toàn bộ bot của họ?')) return; await api('/api/admin/sellers/'+id,{method:'DELETE'}); loadSellers(); }
+
+// ====== USERS ======
+async function fillBotSelect(elId, includeAll=true){
+  if(!allBots.length) try{ allBots = await api('/api/bots'); }catch{}
+  const el = document.getElementById(elId);
+  el.innerHTML = (includeAll?'<option value="">— Tất cả —</option>':'<option value="">— Chọn bot —</option>')
+    + allBots.map(b=>`<option value="${b.id}">#${b.id} @${b.bot_username||'?'}</option>`).join('');
+}
+async function loadUsers(){
+  await fillBotSelect('users-bot-filter');
+  const params = new URLSearchParams({bot_id: document.getElementById('users-bot-filter').value, q: document.getElementById('users-q').value});
+  const list = await api('/api/users?'+params);
+  document.querySelector('#users-tbl tbody').innerHTML = list.length ? list.map(u=>`
+    <tr>
+      <td>#${u.bot_id} @${u.bot_username||''}</td>
+      <td><span class="avc">${(u.first_name||u.username||'?').slice(0,1).toUpperCase()}</span> ${u.first_name||''} <span class="muted">@${u.username||''}</span></td>
+      <td><code>${u.tg_user_id}</code></td>
+      <td>${u.msg_count}</td>
+      <td>${dt(u.last_seen)}</td>
+      <td><div class="actions"><button class="ghost sm" onclick="jumpToMsg(${u.bot_id},${u.tg_user_id})"><i class="i sm ic-message"></i></button></div></td>
+    </tr>`).join('') : '<tr><td colspan="6"><div class="empty"><i class="i ic-user"></i>Không có user.</div></td></tr>';
+}
+function jumpToMsg(b,u){
+  document.querySelector('[data-tab="messages"]').click();
+  setTimeout(async()=>{ await loadMsgBots(); document.getElementById('msg-bot').value=b; await loadMsgUsers(); document.getElementById('msg-user').value=u; loadMessages(); },50);
+}
+
+// ====== MESSAGES ======
+let curBot=0,curUid=0,selIds=new Set();
+async function loadMsgBots(){ await fillBotSelect('msg-bot', false); document.getElementById('msg-bot').onchange=loadMsgUsers; }
+async function loadMsgUsers(){
+  const b = document.getElementById('msg-bot').value; if(!b) return;
+  const list = await api('/api/users?bot_id='+b);
+  document.getElementById('msg-user').innerHTML='<option value="">— User —</option>'+list.map(u=>`<option value="${u.tg_user_id}">${u.first_name||''} @${u.username||''} (${u.tg_user_id})</option>`).join('');
+}
+async function loadMessages(){
+  const b=document.getElementById('msg-bot').value, u=document.getElementById('msg-user').value;
+  if(!b||!u) return; curBot=+b;curUid=+u;selIds.clear();
+  document.getElementById('btn-clear-user').classList.remove('hide');
+  document.getElementById('btn-del-selected').classList.remove('hide');
+  document.getElementById('sel-cnt').textContent='0';
+  const d = await api(`/api/users/${b}/${u}/messages`);
+  document.getElementById('msg-list').innerHTML = d.messages.length ? d.messages.map(m=>`
+    <div class="msg-item">
+      <label class="chk"><input type="checkbox" class="mc" data-id="${m.id}" onchange="updateSel()"/></label>
+      <span class="badge ${m.direction==='in'?'info':'warn'}">${m.direction}</span>
+      <div class="body">${(m.text||'').replace(/</g,'&lt;')}</div>
+      <span class="ts">${dt(m.created_at)}</span>
+    </div>`).join('') : '<div class="empty"><i class="i ic-message"></i>Trống.</div>';
+}
+function updateSel(){ selIds=new Set([...document.querySelectorAll('.mc:checked')].map(c=>+c.dataset.id)); document.getElementById('sel-cnt').textContent=selIds.size; }
+async function deleteSelectedMsgs(){ if(!selIds.size) return; if(!confirm('Xoá '+selIds.size+' tin?')) return; const r=await api('/api/messages/delete',{method:'POST',body:JSON.stringify({ids:[...selIds]})}); toast('Đã xoá '+r.deleted,'ok'); loadMessages(); }
+async function clearUserMsgs(){ if(!confirm('Xoá hết tin với user này?')) return; const r=await api(`/api/users/${curBot}/${curUid}/messages`,{method:'DELETE'}); toast('Đã xoá '+r.deleted,'ok'); loadMessages(); }
+async function nukeAllMessages(){ if(!confirm('XOÁ TOÀN BỘ tin nhắn trong hệ thống? Không thể hoàn tác.')) return; const r=await api('/api/admin/messages/all',{method:'DELETE'}); toast('Đã xoá '+r.deleted,'ok'); }
+
+// ====== BROADCAST ======
+async function loadBroadcastBots(){ await fillBotSelect('bc-bot'); }
+async function loadBroadcastHist(){
+  const list = await api('/api/broadcasts');
+  document.querySelector('#bc-tbl tbody').innerHTML = list.length ? list.map(b=>`<tr><td>${b.id}</td><td>${b.bot_id?('#'+b.bot_id):'<span class="muted">all</span>'}</td><td>${b.total} / <span style="color:var(--ok)">${b.sent}</span> / <span style="color:var(--danger)">${b.failed}</span></td><td>${dt(b.created_at)}</td><td><span class="muted">${(b.text||'').slice(0,80)}…</span></td></tr>`).join('') : '<tr><td colspan="5"><div class="empty"><i class="i ic-history"></i>Chưa có broadcast.</div></td></tr>';
+}
+async function sendBroadcast(){
+  try{
+    const r = await api('/api/broadcast',{method:'POST',body:JSON.stringify({text:document.getElementById('bc-text').value,bot_id:document.getElementById('bc-bot').value||null})});
+    toast('Đã gửi tới '+r.total+' user','ok'); loadBroadcastHist();
+  }catch(e){ toast(e.message,'err'); }
+}
+
+// ====== TOPUPS ======
+async function loadTopups(){
+  const list = await api('/api/admin/topups');
+  document.querySelector('#topups-tbl tbody').innerHTML = list.length ? list.map(t=>`
+    <tr>
+      <td>${t.id}</td>
+      <td><b>${t.seller_username||'#'+t.seller_id}</b></td>
+      <td><b>${fmt(t.amount)}đ</b></td>
+      <td><code>${t.transfer_code}</code></td>
+      <td>${t.status==='approved'?'<span class="badge ok">approved</span>':t.status==='rejected'?'<span class="badge bad">rejected</span>':'<span class="badge warn">pending</span>'}</td>
+      <td>${dt(t.created_at)}</td>
+      <td>${t.status==='pending'?`<div class="actions">
+        <button class="ok sm" onclick="approveTopup(${t.id})"><i class="i sm ic-check"></i> Duyệt</button>
+        <button class="danger sm" onclick="rejectTopup(${t.id})"><i class="i sm ic-x"></i> Từ chối</button>
+      </div>`:''}</td>
+    </tr>`).join('') : '<tr><td colspan="7"><div class="empty"><i class="i ic-wallet"></i>Chưa có yêu cầu.</div></td></tr>';
+}
+async function approveTopup(id){ try{ await api('/api/admin/topups/'+id+'/approve',{method:'POST'}); toast('Đã duyệt','ok'); loadTopups(); }catch(e){ toast(e.message,'err'); } }
+async function rejectTopup(id){ const n=prompt('Lý do (tuỳ chọn):',''); try{ await api('/api/admin/topups/'+id+'/reject',{method:'POST',body:JSON.stringify({note:n||''})}); toast('Đã từ chối','ok'); loadTopups(); }catch(e){ toast(e.message,'err'); } }
+
+// ====== BANK ======
+async function loadBank(){
+  const b = await api('/api/bank');
+  document.getElementById('bk-name').value=b.bank_name||'';
+  document.getElementById('bk-acc').value=b.bank_account||'';
+  document.getElementById('bk-own').value=b.bank_owner||'';
+  document.getElementById('bk-pre').value=b.topup_prefix||'NAP';
+  document.getElementById('bk-qr').value=b.bank_qr_url||'';
+}
+async function saveBank(){
+  const body = {
+    bank_name:document.getElementById('bk-name').value,
+    bank_account:document.getElementById('bk-acc').value,
+    bank_owner:document.getElementById('bk-own').value,
+    topup_prefix:document.getElementById('bk-pre').value,
+    bank_qr_url:document.getElementById('bk-qr').value,
+  };
+  try{
+    await api('/api/admin/bank',{method:'POST',body:JSON.stringify(body)});
+    const f = document.getElementById('bk-qr-file').files[0];
+    if(f){
+      const fd=new FormData(); fd.append('qr', f);
+      const r = await fetch('/api/admin/bank/qr-upload',{method:'POST',headers:{'Authorization':'Bearer '+T},body:fd});
+      const d = await r.json(); if(!r.ok) throw new Error(d.error||'Lỗi upload');
+      document.getElementById('bk-qr').value=d.url;
+    }
+    toast('Đã lưu cấu hình bank','ok');
+  }catch(e){ toast(e.message,'err'); }
+}
+
+// ========== USER ACCOUNTS (Userbot) ==========
+let allAccounts = [];
+async function loadAccounts(){
+  allAccounts = await api('/api/accounts');
+  const tb = document.querySelector('#accounts-tbl tbody');
+  if(!tb) return;
+  tb.innerHTML = allAccounts.map(a=>`
+    <tr>
+      <td>#${a.id}</td>
+      <td><b>${a.label||''}</b></td>
+      <td>${a.phone||''}</td>
+      <td>${a.owner||'admin'}</td>
+      <td>${a.connected?'<span class="pill ok">đã kết nối</span>':'<span class="pill">offline</span>'}</td>
+      <td>${a.active?'<span class="pill ok">on</span>':'<span class="pill">off</span>'}</td>
+      <td>
+        <button class="ghost sm" onclick="accToggle(${a.id},${a.active?0:1})">${a.active?'Tắt':'Bật'}</button>
+        <button class="danger sm" onclick="accDel(${a.id})"><i class="i sm ic-x"></i></button>
+      </td>
+    </tr>`).join('');
+}
+let loginId = null;
+function openAccLoginModal(){
+  loginId=null;
+  ['acc-label','acc-phone','acc-apiid','acc-apihash','acc-owner','acc-code','acc-pw'].forEach(i=>document.getElementById(i).value='');
+  document.getElementById('acc-step2').style.display='none';
+  document.getElementById('m-acc').classList.add('open');
+}
+async function accSendCode(){
+  try{
+    const r = await api('/api/accounts/login/start',{method:'POST',body:JSON.stringify({
+      label:document.getElementById('acc-label').value,
+      phone:document.getElementById('acc-phone').value,
+      api_id:Number(document.getElementById('acc-apiid').value),
+      api_hash:document.getElementById('acc-apihash').value,
+      owner_seller_id: document.getElementById('acc-owner').value? Number(document.getElementById('acc-owner').value): null,
+    })});
+    loginId = r.login_id;
+    document.getElementById('acc-step2').style.display='block';
+    toast('Đã gửi mã. Kiểm tra Telegram của số đó.');
+  }catch(e){ toast(e.message,'err'); }
+}
+async function accConfirm(){
+  if(!loginId) return toast('Bấm Gửi mã trước','err');
+  try{
+    await api('/api/accounts/login/code',{method:'POST',body:JSON.stringify({
+      login_id: loginId,
+      code: document.getElementById('acc-code').value,
+      password: document.getElementById('acc-pw').value || undefined,
+    })});
+    toast('Đăng nhập thành công ✓','ok');
+    document.getElementById('m-acc').classList.remove('open');
+    loadAccounts();
+  }catch(e){ toast(e.message,'err'); }
+}
+async function accToggle(id, on){ await api('/api/accounts/'+id,{method:'PATCH',body:JSON.stringify({active:!!on})}); loadAccounts(); }
+async function accDel(id){ if(!confirm('Xoá tài khoản #'+id+' (và tất cả job)?'))return; await api('/api/accounts/'+id,{method:'DELETE'}); loadAccounts(); }
+
+// ========== ACC JOBS ==========
+let allJobs=[];
+async function loadAccountsForSelect(){
+  const list = await api('/api/accounts');
+  const sel = document.getElementById('job-acc');
+  if(!sel) return;
+  sel.innerHTML = list.map(a=>`<option value="${a.id}">#${a.id} · ${a.label||a.phone}</option>`).join('');
+}
+async function loadJobs(){
+  allJobs = await api('/api/account-jobs');
+  const tb = document.querySelector('#jobs-tbl tbody');
+  if(!tb) return;
+  tb.innerHTML = allJobs.map(j=>{
+    const c = JSON.parse(j.contents||'[]'), ch = JSON.parse(j.channels||'[]');
+    return `<tr>
+      <td>#${j.id}</td>
+      <td><b>${j.name||''}</b></td>
+      <td>${j.account_label||j.account_phone||''}</td>
+      <td>vòng <b>${j.delay_seconds}s</b><br>list <b>${j.list_delay_seconds}s</b></td>
+      <td>${c.length} mục</td>
+      <td>${ch.length} kênh</td>
+      <td>${j.running?'<span class="pill ok">đang chạy</span>':'<span class="pill">dừng</span>'}</td>
+      <td>
+        <button class="ghost sm" onclick="editJob(${j.id})"><i class="i sm ic-edit"></i></button>
+        <button class="ghost sm" onclick="jobRun(${j.id},${j.running?0:1})">${j.running?'Dừng':'Chạy'}</button>
+        <button class="danger sm" onclick="jobDel(${j.id})"><i class="i sm ic-x"></i></button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+function openJobModal(){
+  document.getElementById('job-id').value='';
+  document.getElementById('m-job-title').innerHTML='<i class="i ic-send brand"></i> Thêm Auto rải';
+  ['job-name','job-contents','job-channels','job-mentions'].forEach(i=>document.getElementById(i).value='');
+  document.getElementById('job-delay').value=30;
+  document.getElementById('job-ldelay').value=0;
+  document.getElementById('job-mmode').value='append';
+  document.getElementById('job-mps').value=0;
+  document.getElementById('job-autojoin').checked=true;
+  loadAccountsForSelect();
+  document.getElementById('m-job').classList.add('open');
+}
+function editJob(id){
+  const j = allJobs.find(x=>x.id===id); if(!j) return;
+  document.getElementById('job-id').value=id;
+  document.getElementById('m-job-title').innerHTML='<i class="i ic-edit brand"></i> Sửa Job #'+id;
+  document.getElementById('job-name').value=j.name||'';
+  document.getElementById('job-delay').value=j.delay_seconds;
+  document.getElementById('job-ldelay').value=j.list_delay_seconds;
+  document.getElementById('job-contents').value=JSON.parse(j.contents||'[]').join('\n');
+  document.getElementById('job-channels').value=JSON.parse(j.channels||'[]').join('\n');
+  document.getElementById('job-mentions').value=JSON.parse(j.mentions||'[]').join('\n');
+  document.getElementById('job-mmode').value=j.mention_mode||'append';
+  document.getElementById('job-mps').value=j.mentions_per_send||0;
+  document.getElementById('job-autojoin').checked=Number(j.auto_join ?? 1)===1;
+  loadAccountsForSelect().then(()=>{ document.getElementById('job-acc').value=j.account_id; });
+  document.getElementById('m-job').classList.add('open');
+}
+async function saveJob(){
+  const id = document.getElementById('job-id').value;
+  const body = {
+    name: document.getElementById('job-name').value,
+    account_id: Number(document.getElementById('job-acc').value),
+    delay_seconds: Number(document.getElementById('job-delay').value)||0,
+    list_delay_seconds: Number(document.getElementById('job-ldelay').value)||0,
+    contents: document.getElementById('job-contents').value.split('\n').map(s=>s.trim()).filter(Boolean),
+    channels: document.getElementById('job-channels').value.split('\n').map(s=>s.trim()).filter(Boolean),
+    mentions: document.getElementById('job-mentions').value.split('\n').map(s=>s.trim()).filter(Boolean),
+    mention_mode: document.getElementById('job-mmode').value,
+    mentions_per_send: Number(document.getElementById('job-mps').value)||0,
+    auto_join: document.getElementById('job-autojoin').checked,
+  };
+  try{
+    if(id) await api('/api/account-jobs/'+id,{method:'PATCH',body:JSON.stringify(body)});
+    else   await api('/api/account-jobs',{method:'POST',body:JSON.stringify(body)});
+    document.getElementById('m-job').classList.remove('open'); loadJobs();
+  }catch(e){ toast(e.message,'err'); }
+}
+async function jobRun(id, on){ await api('/api/account-jobs/'+id,{method:'PATCH',body:JSON.stringify({running:!!on})}); loadJobs(); }
+async function jobDel(id){ if(!confirm('Xoá job #'+id+'?'))return; await api('/api/account-jobs/'+id,{method:'DELETE'}); loadJobs(); }
+</script>
+</body></html>
