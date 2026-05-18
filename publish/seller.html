@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>TGBot · Seller</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<div id="gate">Đang tải Seller Panel…</div>
+
+<div class="layout" id="app" style="display:none">
+  <aside id="side">
+    <div class="brand">
+      <div class="b">S</div>
+      <div>
+        <div class="t1">TGBot · Auzastore</div>
+        <div class="t2">Seller Panel</div>
+      </div>
+    </div>
+
+    <div class="nav-h">Quản lý</div>
+    <div class="nav">
+      <a data-tab="bots" class="active"><i class="i ic-bot"></i> Bot của tôi</a>
+      <a data-tab="users"><i class="i ic-users"></i> Users</a>
+      <a data-tab="msg"><i class="i ic-message"></i> Tin nhắn</a>
+      <a data-tab="bc"><i class="i ic-megaphone"></i> Broadcast</a>
+      <a data-tab="topup"><i class="i ic-coin"></i> Nạp tiền</a>
+    </div>
+
+    <div class="me">
+      <div class="av" id="me-av">S</div>
+      <div style="flex:1;min-width:0">
+        <div class="nm" id="me-name">—</div>
+        <div class="ro" id="me-sub">seller</div>
+      </div>
+      <button class="ghost icon-btn icon-only" title="Đăng xuất" onclick="logout()"><i class="i ic-logout"></i></button>
+    </div>
+  </aside>
+
+  <main>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px">
+      <button class="ghost mob-toggle" onclick="document.getElementById('side').classList.toggle('open')"><i class="i ic-menu"></i></button>
+      <div style="flex:1">
+        <h1 class="page" id="page-title">Bot của tôi</h1>
+        <p class="page-sub" id="page-sub">Quản lý toàn bộ bot bạn đang vận hành.</p>
+      </div>
+      <button class="ghost" onclick="refreshCurrent()"><i class="i ic-refresh"></i> Làm mới</button>
+    </div>
+
+    <div class="cards" id="stats"></div>
+
+    <!-- BOTS -->
+    <section data-page="bots" class="active">
+      <div class="panel">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:10px;flex-wrap:wrap">
+          <h2 style="margin:0"><i class="i ic-bot"></i> Bot của tôi</h2>
+          <button onclick="openBotModal()"><i class="i ic-plus"></i> Thêm bot</button>
+        </div>
+        <div class="table-wrap">
+          <table id="bots-tbl"><thead><tr><th>#</th><th>Bot</th><th>Web</th><th>Auto-reply</th><th>Trạng thái</th><th style="text-align:right">Hành động</th></tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+    </section>
+
+    <!-- USERS -->
+    <section data-page="users">
+      <div class="panel">
+        <h2><i class="i ic-users"></i> Users của bạn</h2>
+        <div class="row" style="margin-bottom:12px">
+          <select id="u-bot"></select>
+          <input id="u-q" placeholder="Tìm username / TG ID…"/>
+          <button onclick="loadUsers()"><i class="i ic-search"></i> Tìm</button>
+        </div>
+        <div class="table-wrap">
+          <table id="users-tbl"><thead><tr><th>User</th><th>TG ID</th><th>Tin</th><th>Lần cuối</th><th></th></tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+    </section>
+
+    <!-- MSG -->
+    <section data-page="msg">
+      <div class="panel">
+        <h2><i class="i ic-message"></i> Tin nhắn</h2>
+        <div class="row" style="margin-bottom:12px">
+          <select id="m-bot"></select>
+          <select id="m-user"></select>
+          <button onclick="loadMsg()"><i class="i ic-eye"></i> Tải</button>
+          <button class="danger hide" id="m-clear" onclick="clearMsgs()"><i class="i ic-trash"></i> Xoá hết với user này</button>
+          <button class="danger hide" id="m-delsel" onclick="delSel()"><i class="i ic-trash"></i> Xoá đã chọn (<span id="sel-cnt">0</span>)</button>
+        </div>
+        <div id="m-list" class="empty"><i class="i ic-inbox"></i>Chọn bot & user để xem tin.</div>
+      </div>
+    </section>
+
+    <!-- BC -->
+    <section data-page="bc">
+      <div class="panel">
+        <h2><i class="i ic-megaphone"></i> Broadcast</h2>
+        <div class="field"><label>Bot (trống = tất cả bot của bạn)</label><select id="bc-bot"></select></div>
+        <div class="field"><label>Nội dung (HTML)</label><textarea id="bc-text" placeholder="<b>Thông báo...</b>"></textarea></div>
+        <button onclick="sendBc()"><i class="i ic-send"></i> Gửi ngay</button>
+      </div>
+    </section>
+
+    <!-- TOPUP -->
+    <section data-page="topup">
+      <div class="panel">
+        <h2><i class="i ic-coin"></i> Tạo yêu cầu nạp</h2>
+        <div class="grid2">
+          <div class="field"><label>Số tiền (≥ 10,000đ)</label><input id="tp-amt" type="number" value="100000"/></div>
+          <div class="field" style="display:flex;align-items:flex-end"><button onclick="createTopup()"><i class="i ic-plus"></i> Tạo yêu cầu</button></div>
+        </div>
+        <div id="tp-info"></div>
+      </div>
+      <div class="panel">
+        <h2><i class="i ic-history"></i> Lịch sử nạp</h2>
+        <div class="table-wrap">
+          <table id="tp-tbl"><thead><tr><th>#</th><th>Số tiền</th><th>Mã CK</th><th>Trạng thái</th><th>Lúc</th></tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- MODAL BOT -->
+<div class="modal" id="m-bot-modal"><div class="box">
+  <h2><i class="i ic-bot"></i> <span id="bm-title">Thêm bot</span></h2>
+  <input type="hidden" id="b-id"/>
+  <div class="field"><label>Bot token</label><input id="b-token" placeholder="123456:ABC..."/></div>
+  <div class="grid2">
+    <div class="field"><label>Web URL (https, hoặc trống dùng ZIP)</label><input id="b-url"/></div>
+    <div class="field"><label>Nhãn nút</label><input id="b-label" placeholder="Mở Shop"/></div>
+  </div>
+  <details class="acc"><summary><i class="i ic-edit sm"></i> Welcome message (/start)</summary>
+    <p class="hint">Biến: <code>{full_name}</code> <code>{username}</code> <code>{monthly_users}</code></p>
+    <textarea id="b-welcome"></textarea>
+  </details>
+  <details class="acc"><summary><i class="i ic-bot sm"></i> Auto-reply</summary>
+    <label class="chk"><input type="checkbox" id="b-ar-en"/> Bật trả lời tự động</label>
+    <textarea id="b-ar-text" style="margin-top:10px" placeholder="Để trống = mặc định"></textarea>
+    <div id="ex-wrap" class="hide" style="margin-top:12px">
+      <div class="hint">Ngoại lệ (TG user ID không nhận):</div>
+      <div id="ex-list" style="margin-top:6px"></div>
+      <div class="row" style="margin-top:8px">
+        <input id="ex-uid" type="number" placeholder="TG user ID"/>
+        <input id="ex-note" placeholder="Ghi chú"/>
+        <button class="ghost" onclick="addEx()"><i class="i ic-plus"></i></button>
+      </div>
+    </div>
+  </details>
+  <details class="acc" id="zip-wrap"><summary><i class="i ic-upload sm"></i> Upload ZIP web nguồn</summary>
+    <p class="hint">ZIP chứa <code>index.html</code> ở gốc. Bot sẽ tự host.</p>
+    <input type="file" id="zip-file" accept=".zip"/>
+    <div class="actions" style="margin-top:10px">
+      <button class="ghost" onclick="upZip()"><i class="i ic-upload"></i> Upload</button>
+      <button class="danger" onclick="rmZip()"><i class="i ic-trash"></i> Xoá site</button>
+    </div>
+    <div id="zip-info" class="hint" style="margin-top:8px"></div>
+  </details>
+  <div class="actions-row">
+    <button class="ghost" onclick="closeBM()">Huỷ</button>
+    <button onclick="saveBot()"><i class="i ic-check"></i> Lưu</button>
+  </div>
+</div></div>
+
+<div class="toast" id="toast"><i class="i sm"></i><span id="toast-msg"></span></div>
+
+<script>
+const T = localStorage.getItem('tg_token');
+if(!T) location.href='/login';
+const H = {'Authorization':'Bearer '+T,'Content-Type':'application/json'};
+function toast(m,kind){ const t=document.getElementById('toast'); t.className='toast show'+(kind?' '+kind:''); document.getElementById('toast-msg').textContent=m; clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove('show'),2400); }
+async function api(p,o={}){ const r=await fetch(p,{...o,headers:{...H,...(o.headers||{})}}); const d=await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.error||'HTTP '+r.status); return d; }
+function logout(){ localStorage.clear(); location.href='/login'; }
+const fmt=n=>(n||0).toLocaleString('vi-VN');
+const dt=s=>s?new Date(s).toLocaleString('vi-VN'):'—';
+const esc = s => (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+const PAGE_META={bots:['Bot của tôi','Quản lý toàn bộ bot bạn đang vận hành.'],users:['Users','Tất cả user đã chat với bot của bạn.'],msg:['Tin nhắn','Xem & dọn dẹp tin nhắn.'],bc:['Broadcast','Gửi thông báo hàng loạt.'],topup:['Nạp tiền','Nạp số dư & xem lịch sử.']};
+let curTab='bots';
+
+document.querySelectorAll('.nav [data-tab]').forEach(a=>{
+  a.onclick=()=>{
+    document.querySelectorAll('.nav a').forEach(x=>x.classList.remove('active'));
+    a.classList.add('active');
+    const tab=a.dataset.tab; curTab=tab;
+    document.querySelectorAll('main > section').forEach(p=>p.classList.remove('active'));
+    document.querySelector(`[data-page="${tab}"]`).classList.add('active');
+    const [t,s]=PAGE_META[tab]||[tab,'']; document.getElementById('page-title').textContent=t; document.getElementById('page-sub').textContent=s;
+    document.getElementById('side').classList.remove('open');
+    refreshCurrent();
+  };
+});
+function refreshCurrent(){
+  loadStats();
+  ({bots:loadBots,users:loadUsersInit,msg:loadMsgInit,bc:loadBcBots,topup:()=>{loadBank();loadTopups();}})[curTab]?.();
+}
+
+(async()=>{
+  try{
+    const me=await api('/api/me');
+    document.getElementById('me-name').textContent=me.username||'seller';
+    document.getElementById('me-sub').textContent='seller'+(me.expires_at?(' · hết hạn '+dt(me.expires_at)):'');
+    document.getElementById('me-av').textContent=(me.username||'S')[0].toUpperCase();
+  }catch{}
+  document.getElementById('gate').style.display='none';
+  document.getElementById('app').style.display='grid';
+  loadStats(); loadBots();
+})();
+
+const STAT_ICONS={'Số dư':'ic-coin','Bots':'ic-bot','Users':'ic-users','Users /tháng':'ic-trend-up','Hạn dùng':'ic-clock'};
+async function loadStats(){
+  try{
+    const s = await api('/api/stats');
+    const cards=[['Số dư', fmt(s.balance)+'đ'],['Bots', s.bots],['Users', fmt(s.users)],['Users /tháng', fmt(s.users_monthly)],['Hạn dùng', s.expires_at?dt(s.expires_at):'∞']];
+    document.getElementById('stats').innerHTML = cards.map(([l,n])=>`<div class="card"><div class="k"><i class="i sm ${STAT_ICONS[l]||'ic-zap'}"></i>${l}</div><div class="v">${n}</div></div>`).join('');
+  }catch(e){ toast(e.message,'err'); }
+}
+
+// BOTS
+let myBots=[];
+async function loadBots(){
+  try{
+    myBots = await api('/api/bots');
+    document.querySelector('#bots-tbl tbody').innerHTML = myBots.length ? myBots.map(b=>`
+      <tr>
+        <td>${b.id}</td><td><b>@${esc(b.bot_username||'?')}</b></td>
+        <td><a href="${esc(b.effective_url||'#')}" target="_blank" style="font-size:12px">${esc(b.effective_url||'—')}</a> <span class="badge ${b.web_mode==='zip'?'warn':'info'}">${b.web_mode||'url'}</span></td>
+        <td>${b.auto_reply_enabled?'<span class="badge ok">ON</span>':'<span class="badge">OFF</span>'}</td>
+        <td>${b.active?'<span class="badge ok">Active</span>':'<span class="badge bad">Stop</span>'}</td>
+        <td><div class="actions" style="justify-content:flex-end">
+          <button class="xs ghost icon-btn" title="Sửa" onclick="editBot(${b.id})"><i class="i sm ic-edit"></i></button>
+          <button class="xs ${b.active?'dan':'ok'} icon-btn" title="${b.active?'Tạm dừng':'Bật'}" onclick="tog(${b.id},${b.active?0:1})"><i class="i sm ${b.active?'ic-pause':'ic-play'}"></i></button>
+          <button class="xs dan icon-btn" title="Xoá" onclick="del(${b.id})"><i class="i sm ic-trash"></i></button>
+        </div></td>
+      </tr>`).join('') : `<tr><td colspan="6"><div class="empty"><i class="i ic-bot"></i>Bạn chưa có bot nào.</div></td></tr>`;
+  }catch(e){ toast(e.message,'err'); }
+}
+function openBotModal(){
+  document.getElementById('bm-title').textContent='Thêm bot';
+  ['b-id','b-token','b-url','b-label','b-welcome','b-ar-text','ex-uid','ex-note'].forEach(i=>document.getElementById(i).value='');
+  document.getElementById('b-token').disabled=false;
+  document.getElementById('b-ar-en').checked=false;
+  document.getElementById('ex-wrap').classList.add('hide');
+  document.getElementById('zip-wrap').classList.add('hide');
+  document.getElementById('zip-info').textContent='';
+  document.getElementById('m-bot-modal').classList.add('open');
+}
+function closeBM(){ document.getElementById('m-bot-modal').classList.remove('open'); }
+function editBot(id){
+  const b = myBots.find(x=>x.id===id); if(!b) return;
+  document.getElementById('bm-title').textContent='Sửa bot #'+id;
+  document.getElementById('b-id').value=id;
+  document.getElementById('b-token').value='(ẩn — để trống nếu không đổi)';
+  document.getElementById('b-token').disabled=true;
+  document.getElementById('b-url').value=b.web_url||'';
+  document.getElementById('b-label').value=b.button_label||'';
+  document.getElementById('b-welcome').value=b.welcome||'';
+  document.getElementById('b-ar-en').checked=!!b.auto_reply_enabled;
+  document.getElementById('b-ar-text').value=b.auto_reply_text||'';
+  document.getElementById('ex-wrap').classList.remove('hide');
+  document.getElementById('zip-wrap').classList.remove('hide');
+  document.getElementById('zip-info').textContent = b.web_zip_dir?('Đang host /site/'+id+'/'):'Chưa upload.';
+  loadEx(id);
+  document.getElementById('m-bot-modal').classList.add('open');
+}
+async function saveBot(){
+  const id = document.getElementById('b-id').value;
+  const body = {
+    web_url: document.getElementById('b-url').value.trim(),
+    button_label: document.getElementById('b-label').value,
+    welcome: document.getElementById('b-welcome').value,
+    auto_reply_enabled: document.getElementById('b-ar-en').checked,
+    auto_reply_text: document.getElementById('b-ar-text').value,
+  };
+  try{
+    if(id) await api('/api/bots/'+id,{method:'PATCH',body:JSON.stringify(body)});
+    else { body.token = document.getElementById('b-token').value.trim(); await api('/api/bots',{method:'POST',body:JSON.stringify(body)}); }
+    document.getElementById('b-token').disabled=false;
+    toast('Đã lưu','ok'); closeBM(); loadBots();
+  }catch(e){ toast(e.message,'err'); }
+}
+async function tog(id,active){ try{ await api('/api/bots/'+id,{method:'PATCH',body:JSON.stringify({active})}); loadBots(); }catch(e){ toast(e.message,'err'); } }
+async function del(id){ if(!confirm('Xoá bot?')) return; try{ await api('/api/bots/'+id,{method:'DELETE'}); loadBots(); }catch(e){ toast(e.message,'err'); } }
+async function loadEx(id){
+  try{
+    const list = await api('/api/bots/'+id+'/autoreply/exceptions');
+    document.getElementById('ex-list').innerHTML = list.length
+      ? list.map(e=>`<div class="row" style="margin-top:6px;align-items:center"><span class="badge info">${e.tg_user_id}</span><span class="hint" style="flex:1">${esc(e.username||'')} ${esc(e.note||'')}</span><button class="xs dan icon-btn" onclick="rmEx(${id},${e.id})"><i class="i sm ic-x"></i></button></div>`).join('')
+      : '<div class="hint">Chưa có.</div>';
+  }catch{}
+}
+async function addEx(){
+  const id = document.getElementById('b-id').value; if(!id) return toast('Lưu bot trước');
+  const uid = Number(document.getElementById('ex-uid').value); if(!uid) return;
+  try{ await api('/api/bots/'+id+'/autoreply/exceptions',{method:'POST',body:JSON.stringify({tg_user_id:uid,note:document.getElementById('ex-note').value})}); document.getElementById('ex-uid').value=''; document.getElementById('ex-note').value=''; loadEx(id); }catch(e){ toast(e.message,'err'); }
+}
+async function rmEx(b,e){ try{ await api(`/api/bots/${b}/autoreply/exceptions/${e}`,{method:'DELETE'}); loadEx(b); }catch{} }
+async function upZip(){
+  const id = document.getElementById('b-id').value; if(!id) return toast('Lưu bot trước');
+  const f = document.getElementById('zip-file').files[0]; if(!f) return toast('Chọn file');
+  const fd = new FormData(); fd.append('zip', f);
+  try{
+    const r = await fetch('/api/bots/'+id+'/site-zip',{method:'POST',headers:{Authorization:'Bearer '+T},body:fd});
+    const d = await r.json(); if(!r.ok) throw new Error(d.error||'Lỗi');
+    document.getElementById('zip-info').textContent='✓ '+d.url+' ('+d.files+' files)';
+    toast('Upload OK','ok'); loadBots();
+  }catch(e){ toast(e.message,'err'); }
+}
+async function rmZip(){
+  const id = document.getElementById('b-id').value; if(!id||!confirm('Xoá site?')) return;
+  try{ await api('/api/bots/'+id+'/site-zip',{method:'DELETE'}); document.getElementById('zip-info').textContent='Đã xoá'; }catch(e){ toast(e.message,'err'); }
+}
+
+// USERS
+async function fillSel(elId,all=true){
+  if(!myBots.length) try{ myBots = await api('/api/bots'); }catch{}
+  document.getElementById(elId).innerHTML = (all?'<option value="">— Tất cả —</option>':'<option value="">— Chọn bot —</option>')+myBots.map(b=>`<option value="${b.id}">@${esc(b.bot_username||b.id)}</option>`).join('');
+}
+async function loadUsersInit(){ await fillSel('u-bot'); loadUsers(); }
+async function loadUsers(){
+  try{
+    const list = await api('/api/users?'+new URLSearchParams({bot_id:document.getElementById('u-bot').value,q:document.getElementById('u-q').value}));
+    document.querySelector('#users-tbl tbody').innerHTML = list.length ? list.map(u=>`<tr><td>${esc(u.first_name||'')} ${u.username?'<span class="hint">@'+esc(u.username)+'</span>':''}</td><td><code>${u.tg_user_id}</code></td><td>${u.msg_count}</td><td>${dt(u.last_seen)}</td><td style="text-align:right"><button class="xs ghost" onclick="jumpMsg(${u.bot_id},${u.tg_user_id})"><i class="i sm ic-message"></i> Xem</button></td></tr>`).join('') : `<tr><td colspan="5"><div class="empty"><i class="i ic-users"></i>Không có user.</div></td></tr>`;
+  }catch(e){ toast(e.message,'err'); }
+}
+
+// MSG
+let cBot=0,cUid=0,sel=new Set();
+async function loadMsgInit(){ await fillSel('m-bot',false); document.getElementById('m-bot').onchange=loadMsgUsers; }
+async function loadMsgUsers(){
+  const b = document.getElementById('m-bot').value; if(!b) return;
+  const list = await api('/api/users?bot_id='+b);
+  document.getElementById('m-user').innerHTML='<option value="">— User —</option>'+list.map(u=>`<option value="${u.tg_user_id}">${esc(u.first_name||'')} @${esc(u.username||'')} (${u.tg_user_id})</option>`).join('');
+}
+async function loadMsg(){
+  const b = document.getElementById('m-bot').value, u = document.getElementById('m-user').value;
+  if(!b||!u) return; cBot=+b; cUid=+u; sel.clear();
+  try{
+    const d = await api(`/api/users/${b}/${u}/messages`);
+    document.getElementById('m-clear').classList.remove('hide');
+    document.getElementById('m-delsel').classList.remove('hide');
+    document.getElementById('m-list').className='';
+    document.getElementById('m-list').innerHTML = d.messages.length
+      ? d.messages.map(m=>`<div class="msg-row ${m.direction}">
+          <input type="checkbox" class="mc" data-id="${m.id}" onchange="upSel()"/>
+          <span class="badge ${m.direction==='in'?'info':'warn'}">${m.direction}</span>
+          <div class="bubble">${esc(m.text||'')}</div>
+          <span class="meta">${dt(m.created_at)}</span></div>`).join('')
+      : `<div class="empty"><i class="i ic-inbox"></i>Trống.</div>`;
+  }catch(e){ toast(e.message,'err'); }
+}
+function upSel(){ sel = new Set([...document.querySelectorAll('.mc:checked')].map(c=>+c.dataset.id)); document.getElementById('sel-cnt').textContent=sel.size; }
+async function delSel(){ if(!sel.size) return; if(!confirm('Xoá '+sel.size+' tin?')) return; try{ const r=await api('/api/messages/delete',{method:'POST',body:JSON.stringify({ids:[...sel]})}); toast('Xoá '+r.deleted,'ok'); loadMsg(); }catch(e){ toast(e.message,'err'); } }
+async function clearMsgs(){ if(!confirm('Xoá hết tin với user này?')) return; try{ const r=await api(`/api/users/${cBot}/${cUid}/messages`,{method:'DELETE'}); toast('Xoá '+r.deleted,'ok'); loadMsg(); }catch(e){ toast(e.message,'err'); } }
+function jumpMsg(b,u){ document.querySelector('.nav [data-tab="msg"]').click(); setTimeout(async()=>{ await loadMsgInit(); document.getElementById('m-bot').value=b; await loadMsgUsers(); document.getElementById('m-user').value=u; loadMsg(); },80); }
+
+// BC
+async function loadBcBots(){ await fillSel('bc-bot'); }
+async function sendBc(){
+  try{ const r=await api('/api/broadcast',{method:'POST',body:JSON.stringify({text:document.getElementById('bc-text').value,bot_id:document.getElementById('bc-bot').value||null})}); toast('Đã gửi tới '+r.total+' người','ok'); }catch(e){ toast(e.message,'err'); }
+}
+
+// TOPUP
+let bankInfo={};
+async function loadBank(){ try{ bankInfo = await api('/api/bank'); }catch{} }
+async function createTopup(){
+  try{
+    const d = await api('/api/seller/topups',{method:'POST',body:JSON.stringify({amount:Number(document.getElementById('tp-amt').value)})});
+    document.getElementById('tp-info').innerHTML = `
+      <div class="topup-banner">
+        <div class="hint" style="margin-bottom:6px;color:var(--text-dim)"><i class="i sm ic-info"></i> Chuyển khoản với nội dung:</div>
+        <div class="code">${esc(d.transfer_code)}</div>
+        <div class="kv" style="margin-top:14px"><span class="k">Số tiền</span><b>${fmt(d.amount)}đ</b></div>
+        <div class="kv"><span class="k">Ngân hàng</span><b>${esc(d.bank.bank_name||'—')}</b></div>
+        <div class="kv"><span class="k">Số tài khoản</span><b>${esc(d.bank.bank_account||'—')}</b></div>
+        <div class="kv"><span class="k">Chủ TK</span><b>${esc(d.bank.bank_owner||'—')}</b></div>
+        ${d.bank.bank_qr_url?`<img src="${esc(d.bank.bank_qr_url)}"/>`:''}
+      </div>`;
+    loadTopups();
+  }catch(e){ toast(e.message,'err'); }
+}
+async function loadTopups(){
+  try{
+    const list = await api('/api/seller/topups');
+    document.querySelector('#tp-tbl tbody').innerHTML = list.length ? list.map(t=>`<tr><td>${t.id}</td><td><b>${fmt(t.amount)}đ</b></td><td><code>${esc(t.transfer_code)}</code></td><td><span class="badge ${t.status==='approved'?'ok':t.status==='rejected'?'bad':'warn'}">${t.status}</span></td><td>${dt(t.created_at)}</td></tr>`).join('') : `<tr><td colspan="5"><div class="empty"><i class="i ic-history"></i>Chưa có yêu cầu.</div></td></tr>`;
+  }catch(e){ toast(e.message,'err'); }
+}
+</script>
+</body></html>
