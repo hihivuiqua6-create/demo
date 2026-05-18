@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TGBot Platform — Admin</title>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --card: #16161f;
+    --border: #22222e;
+    --accent: #6c63ff;
+    --accent2: #00d4aa;
+    --danger: #ff4d6d;
+    --warn: #ffd166;
+    --text: #e8e8f0;
+    --muted: #6b6b80;
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+
+  /* LOGIN */
+  #loginScreen {
+    display: flex; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 20px;
+  }
+  .login-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 20px; padding: 48px 40px; width: 100%; max-width: 400px;
+    box-shadow: 0 0 60px rgba(108,99,255,0.1);
+  }
+  .login-card h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .login-card p { color: var(--muted); font-size: 14px; margin-bottom: 32px; }
+
+  /* APP */
+  #app { display: none; }
+  .sidebar {
+    position: fixed; left: 0; top: 0; bottom: 0; width: 220px;
+    background: var(--surface); border-right: 1px solid var(--border);
+    padding: 24px 16px; display: flex; flex-direction: column; gap: 4px;
+    z-index: 100;
+  }
+  .sidebar-logo { font-size: 18px; font-weight: 800; padding: 8px 12px 24px; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+    border-radius: 8px; cursor: pointer; font-size: 14px; color: var(--muted);
+    transition: all 0.2s; border: none; background: none; width: 100%; text-align: left;
+  }
+  .nav-item:hover { background: var(--card); color: var(--text); }
+  .nav-item.active { background: rgba(108,99,255,0.15); color: var(--accent); }
+  .nav-icon { font-size: 18px; width: 20px; }
+
+  .main { margin-left: 220px; padding: 32px; min-height: 100vh; }
+  .page { display: none; }
+  .page.active { display: block; }
+
+  h2 { font-size: 24px; font-weight: 700; margin-bottom: 24px; }
+
+  /* STATS */
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; margin-bottom: 32px; }
+  .stat-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 20px; text-align: center;
+  }
+  .stat-num { font-size: 36px; font-weight: 800; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .stat-label { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+  /* FORMS */
+  .form-group { margin-bottom: 16px; }
+  label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  input, textarea, select {
+    width: 100%; padding: 12px 14px; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 8px; color: var(--text);
+    font-size: 14px; outline: none; transition: border 0.2s;
+  }
+  input:focus, textarea:focus { border-color: var(--accent); }
+  textarea { resize: vertical; min-height: 80px; }
+
+  .btn {
+    padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer;
+    font-size: 14px; font-weight: 600; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #7c74ff; }
+  .btn-success { background: var(--accent2); color: #000; }
+  .btn-danger { background: var(--danger); color: #fff; }
+  .btn-warn { background: var(--warn); color: #000; }
+  .btn-outline { background: transparent; color: var(--text); border: 1px solid var(--border); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin-bottom: 20px; }
+  .card h3 { font-size: 16px; font-weight: 600; margin-bottom: 16px; }
+
+  /* TABLE */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; padding: 10px 14px; color: var(--muted); font-weight: 500; border-bottom: 1px solid var(--border); }
+  td { padding: 12px 14px; border-bottom: 1px solid var(--border); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+  .badge-green { background: rgba(0,212,170,0.15); color: var(--accent2); }
+  .badge-red { background: rgba(255,77,109,0.15); color: var(--danger); }
+  .badge-gray { background: rgba(107,107,128,0.15); color: var(--muted); }
+
+  .alert { padding: 12px 16px; border-radius: 8px; font-size: 14px; margin-bottom: 16px; display: none; }
+  .alert-success { background: rgba(0,212,170,0.1); border: 1px solid rgba(0,212,170,0.3); color: var(--accent2); }
+  .alert-error { background: rgba(255,77,109,0.1); border: 1px solid rgba(255,77,109,0.3); color: var(--danger); }
+
+  /* API DOC */
+  .code-block {
+    background: #0d0d14; border: 1px solid var(--border); border-radius: 8px;
+    padding: 16px; font-family: 'Courier New', monospace; font-size: 13px;
+    color: #a0f0c0; overflow-x: auto; white-space: pre; margin: 8px 0 16px;
+  }
+
+  .logout-btn { margin-top: auto; }
+
+  @media (max-width: 768px) {
+    .sidebar { width: 60px; padding: 16px 8px; }
+    .sidebar-logo, .nav-item span { display: none; }
+    .main { margin-left: 60px; padding: 20px 16px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginScreen">
+  <div class="login-card">
+    <h1>🤖 TGBot Platform</h1>
+    <p>Đăng nhập để quản lý hệ thống</p>
+    <div id="loginAlert" class="alert alert-error"></div>
+    <div class="form-group">
+      <label>Tài khoản</label>
+      <input type="text" id="loginUser" value="admin" placeholder="admin">
+    </div>
+    <div class="form-group">
+      <label>Mật khẩu</label>
+      <input type="password" id="loginPass" value="admin123456" placeholder="••••••">
+    </div>
+    <button class="btn btn-primary" style="width:100%;padding:14px" onclick="doLogin()">Đăng nhập</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="sidebar">
+    <div class="sidebar-logo">🤖 TGBot</div>
+    <button class="nav-item active" onclick="showPage('dashboard')">
+      <span class="nav-icon">📊</span><span>Dashboard</span>
+    </button>
+    <button class="nav-item" onclick="showPage('bots')">
+      <span class="nav-icon">🤖</span><span>Quản lý Bot</span>
+    </button>
+    <button class="nav-item" onclick="showPage('add-bot')">
+      <span class="nav-icon">➕</span><span>Thêm Bot</span>
+    </button>
+    <button class="nav-item" onclick="showPage('users')">
+      <span class="nav-icon">👥</span><span>Users TG</span>
+    </button>
+    <button class="nav-item" onclick="showPage('api-docs')">
+      <span class="nav-icon">📡</span><span>API Docs</span>
+    </button>
+    <button class="nav-item logout-btn" onclick="doLogout()">
+      <span class="nav-icon">🚪</span><span>Đăng xuất</span>
+    </button>
+  </div>
+
+  <div class="main">
+
+    <!-- DASHBOARD -->
+    <div class="page active" id="page-dashboard">
+      <h2>📊 Dashboard</h2>
+      <div class="stats-grid" id="statsGrid">
+        <div class="stat-card"><div class="stat-num" id="s-bots">—</div><div class="stat-label">Bot đang hoạt động</div></div>
+        <div class="stat-card"><div class="stat-num" id="s-running">—</div><div class="stat-label">Bot đang chạy</div></div>
+        <div class="stat-card"><div class="stat-num" id="s-users">—</div><div class="stat-label">Tổng Users TG</div></div>
+        <div class="stat-card"><div class="stat-num" id="s-starts">—</div><div class="stat-label">Tổng /start</div></div>
+        <div class="stat-card"><div class="stat-num" id="s-today">—</div><div class="stat-label">/start hôm nay</div></div>
+      </div>
+      <div class="card">
+        <h3>📋 Hoạt động gần đây</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Bot</th><th>User ID</th><th>Username</th><th>Sự kiện</th><th>Thời gian</th></tr></thead>
+            <tbody id="recentActivity"><tr><td colspan="5" style="text-align:center;color:var(--muted)">Đang tải...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- BOTS LIST -->
+    <div class="page" id="page-bots">
+      <h2>🤖 Quản lý Bot</h2>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Bot</th><th>Web URL</th><th>Trạng thái</th><th>Tạo lúc</th><th>Hành động</th></tr></thead>
+            <tbody id="botsList"><tr><td colspan="5" style="text-align:center;color:var(--muted)">Đang tải...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ADD BOT -->
+    <div class="page" id="page-add-bot">
+      <h2>➕ Thêm Bot mới</h2>
+      <div class="card" style="max-width:560px">
+        <h3>Cấu hình Bot Telegram</h3>
+        <div id="addBotAlert" class="alert"></div>
+        <div class="form-group">
+          <label>🔑 Bot Token (từ @BotFather)</label>
+          <input type="text" id="newToken" placeholder="1234567890:ABCdefGHI...">
+        </div>
+        <div class="form-group">
+          <label>🌐 Link web cần hiển thị trong Mini App</label>
+          <input type="text" id="newWebUrl" placeholder="https://your-shop.com">
+        </div>
+        <div class="form-group">
+          <label>💬 Tin nhắn chào mừng khi /start</label>
+          <textarea id="newWelcome" placeholder="Chào mừng bạn! 👋 Nhấn nút bên dưới để mở ứng dụng.">Chào mừng bạn! 👋 Nhấn nút bên dưới để mở ứng dụng.</textarea>
+        </div>
+        <div class="form-group">
+          <label>🔘 Text nút mở Mini App</label>
+          <input type="text" id="newButtonText" value="🚀 Mở Mini App" placeholder="🚀 Mở Mini App">
+        </div>
+        <button class="btn btn-primary" onclick="addBot()">➕ Thêm & Khởi động Bot</button>
+      </div>
+    </div>
+
+    <!-- USERS -->
+    <div class="page" id="page-users">
+      <h2>👥 Users Telegram</h2>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Bot</th><th>TG ID</th><th>Username</th><th>Tên</th><th>Lần đầu</th><th>Gần nhất</th></tr></thead>
+            <tbody id="usersList"><tr><td colspan="6" style="text-align:center;color:var(--muted)">Đang tải...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- API DOCS -->
+    <div class="page" id="page-api-docs">
+      <h2>📡 API Docs — Tích hợp vào web riêng</h2>
+      <div class="card">
+        <h3>Base URL</h3>
+        <div class="code-block" id="baseUrlDoc">https://your-app.onrender.com</div>
+
+        <h3>🔑 API Key</h3>
+        <p style="color:var(--muted);font-size:14px;margin-bottom:8px">Dùng trong tất cả request (giống admin password)</p>
+        <div class="code-block">api_key: "admin123456"</div>
+
+        <h3>➕ Thêm bot mới</h3>
+        <div class="code-block">POST /api/create-bot
+Content-Type: application/json
+
+{
+  "token": "BOT_TOKEN_TỪ_BOTFATHER",
+  "web_url": "https://your-shop.com",
+  "welcome_message": "Chào mừng! 👋",
+  "button_text": "🛒 Mở Shop",
+  "api_key": "admin123456"
+}
+
+// Response:
+{
+  "success": true,
+  "bot_username": "your_bot",
+  "message": "Bot @your_bot đã được kích hoạt!"
+}</div>
+
+        <h3>♻️ Cập nhật bot</h3>
+        <div class="code-block">PUT /api/update-bot
+Content-Type: application/json
+
+{
+  "token": "BOT_TOKEN",
+  "web_url": "https://new-url.com",
+  "api_key": "admin123456"
+}</div>
+
+        <h3>🗑️ Xóa bot</h3>
+        <div class="code-block">DELETE /api/delete-bot
+Content-Type: application/json
+
+{
+  "token": "BOT_TOKEN",
+  "api_key": "admin123456"
+}</div>
+
+        <h3>ℹ️ Kiểm tra trạng thái bot</h3>
+        <div class="code-block">GET /api/bot-status?token=BOT_TOKEN&api_key=admin123456
+
+// Response:
+{
+  "success": true,
+  "bot": {
+    "bot_username": "your_bot",
+    "web_url": "https://your-shop.com",
+    "is_active": 1,
+    "is_running": true
+  }
+}</div>
+
+        <h3>💡 Ví dụ JavaScript tích hợp vào web riêng</h3>
+        <div class="code-block">// Hàm thêm bot từ form của bạn
+async function addTelegramBot(token, webUrl) {
+  const res = await fetch('https://your-app.onrender.com/api/create-bot', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      token: token,
+      web_url: webUrl,
+      welcome_message: 'Chào mừng bạn! 👋',
+      button_text: '🛒 Mở Shop',
+      api_key: 'admin123456'   // ← đổi nếu bạn đổi admin password
+    })
+  });
+  const data = await res.json();
+  console.log(data); // { success: true, bot_username: "..." }
+}</div>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<script>
+let authToken = localStorage.getItem('tgbot_token') || '';
+const API = '';
+
+async function apiFetch(path, opts = {}) {
+  const res = await fetch(API + path, {
+    ...opts,
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken, ...(opts.headers || {}) }
+  });
+  return res.json();
+}
+
+async function doLogin() {
+  const u = document.getElementById('loginUser').value;
+  const p = document.getElementById('loginPass').value;
+  const al = document.getElementById('loginAlert');
+  al.style.display = 'none';
+  try {
+    const data = await apiFetch('/api/admin/login', { method: 'POST', body: JSON.stringify({ username: u, password: p }) });
+    if (data.success) {
+      authToken = data.token;
+      localStorage.setItem('tgbot_token', authToken);
+      document.getElementById('loginScreen').style.display = 'none';
+      document.getElementById('app').style.display = 'block';
+      loadDashboard();
+    } else {
+      al.textContent = data.error || 'Lỗi đăng nhập';
+      al.style.display = 'block';
+    }
+  } catch { al.textContent = 'Không thể kết nối server'; al.style.display = 'block'; }
+}
+
+function doLogout() {
+  authToken = '';
+  localStorage.removeItem('tgbot_token');
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
+}
+
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  event.currentTarget.classList.add('active');
+  if (name === 'dashboard') loadDashboard();
+  if (name === 'bots') loadBots();
+  if (name === 'users') loadUsers();
+  if (name === 'api-docs') document.getElementById('baseUrlDoc').textContent = location.origin;
+}
+
+async function loadDashboard() {
+  const data = await apiFetch('/api/admin/analytics');
+  if (!data.success) return;
+  const s = data.stats;
+  document.getElementById('s-bots').textContent = s.totalBots;
+  document.getElementById('s-running').textContent = s.activeBots;
+  document.getElementById('s-users').textContent = s.totalUsers;
+  document.getElementById('s-starts').textContent = s.totalStarts;
+  document.getElementById('s-today').textContent = s.todayStarts;
+  const tbody = document.getElementById('recentActivity');
+  tbody.innerHTML = data.recentActivity.length === 0 ? '<tr><td colspan="5" style="text-align:center;color:var(--muted)">Chưa có hoạt động</td></tr>' :
+    data.recentActivity.map(r => `<tr>
+      <td>@${r.bot_username || '?'}</td>
+      <td>${r.telegram_user_id || '—'}</td>
+      <td>${r.telegram_username ? '@' + r.telegram_username : '—'}</td>
+      <td><span class="badge ${r.event_type === 'start' ? 'badge-green' : 'badge-gray'}">${r.event_type}</span></td>
+      <td style="color:var(--muted);font-size:12px">${new Date(r.created_at).toLocaleString('vi-VN')}</td>
+    </tr>`).join('');
+}
+
+async function loadBots() {
+  const data = await apiFetch('/api/admin/bots');
+  const tbody = document.getElementById('botsList');
+  if (!data.success || data.bots.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted)">Chưa có bot nào</td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.bots.map(b => `<tr>
+    <td>@${b.bot_username || '?'}</td>
+    <td><a href="${b.web_url}" target="_blank" style="color:var(--accent);text-decoration:none">${b.web_url.length > 40 ? b.web_url.slice(0,40)+'...' : b.web_url}</a></td>
+    <td><span class="badge ${b.is_active ? 'badge-green' : 'badge-red'}">${b.is_active ? '🟢 Active' : '🔴 Offline'}</span></td>
+    <td style="color:var(--muted);font-size:12px">${new Date(b.created_at).toLocaleString('vi-VN')}</td>
+    <td style="display:flex;gap:6px">
+      <button class="btn btn-warn" style="padding:6px 12px;font-size:12px" onclick="toggleBot(${b.id}, ${b.is_active})">${b.is_active ? '⏸ Tắt' : '▶ Bật'}</button>
+      <button class="btn btn-danger" style="padding:6px 12px;font-size:12px" onclick="deleteBot(${b.id})">🗑</button>
+    </td>
+  </tr>`).join('');
+}
+
+async function loadUsers() {
+  const data = await apiFetch('/api/admin/users');
+  const tbody = document.getElementById('usersList');
+  if (!data.success || data.users.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted)">Chưa có users</td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.users.map(u => `<tr>
+    <td>@${u.bot_username || '?'}</td>
+    <td>${u.telegram_id}</td>
+    <td>${u.username ? '@'+u.username : '—'}</td>
+    <td>${u.first_name || ''} ${u.last_name || ''}</td>
+    <td style="color:var(--muted);font-size:12px">${new Date(u.first_seen).toLocaleString('vi-VN')}</td>
+    <td style="color:var(--muted);font-size:12px">${new Date(u.last_seen).toLocaleString('vi-VN')}</td>
+  </tr>`).join('');
+}
+
+async function addBot() {
+  const al = document.getElementById('addBotAlert');
+  al.style.display = 'none';
+  const body = {
+    token: document.getElementById('newToken').value.trim(),
+    web_url: document.getElementById('newWebUrl').value.trim(),
+    welcome_message: document.getElementById('newWelcome').value.trim(),
+    button_text: document.getElementById('newButtonText').value.trim(),
+    api_key: 'admin123456'
+  };
+  if (!body.token || !body.web_url) {
+    al.className = 'alert alert-error'; al.textContent = 'Vui lòng nhập Token và Web URL'; al.style.display = 'block'; return;
+  }
+  const res = await fetch('/api/create-bot', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  const data = await res.json();
+  al.className = data.success ? 'alert alert-success' : 'alert alert-error';
+  al.textContent = data.success ? `✅ ${data.message}` : `❌ ${data.error}`;
+  al.style.display = 'block';
+  if (data.success) { document.getElementById('newToken').value = ''; document.getElementById('newWebUrl').value = ''; }
+}
+
+async function toggleBot(id, isActive) {
+  await apiFetch(`/api/admin/bots/${id}/toggle`, { method: 'POST' });
+  loadBots();
+}
+
+async function deleteBot(id) {
+  if (!confirm('Chắc chắn xóa bot này?')) return;
+  await apiFetch(`/api/admin/bots/${id}`, { method: 'DELETE' });
+  loadBots();
+}
+
+// Auto-login nếu đã có token
+if (authToken) {
+  apiFetch('/api/admin/analytics').then(d => {
+    if (d.success) {
+      document.getElementById('loginScreen').style.display = 'none';
+      document.getElementById('app').style.display = 'block';
+      loadDashboard();
+    } else {
+      authToken = '';
+      localStorage.removeItem('tgbot_token');
+    }
+  }).catch(() => {});
+}
+
+document.getElementById('loginPass').addEventListener('keypress', e => { if (e.key === 'Enter') doLogin(); });
+</script>
+</body>
+</html>
