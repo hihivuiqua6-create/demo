@@ -1,0 +1,1237 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Telegram Mini App Platform</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Syne:wght@400;600;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0d0d14;
+      --surface: #13131f;
+      --card: #1a1a2e;
+      --border: #2a2a45;
+      --accent: #7c6aff;
+      --accent2: #00d4aa;
+      --danger: #ff4757;
+      --warn: #ffa502;
+      --text: #e8e8f0;
+      --muted: #6b6b8a;
+      --font: 'Syne', sans-serif;
+      --mono: 'JetBrains Mono', monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    /* ── Login ── */
+    #loginScreen {
+      display: flex; align-items: center; justify-content: center;
+      min-height: 100vh; background: radial-gradient(ellipse at 30% 50%, #1a0a3e 0%, var(--bg) 60%);
+    }
+    .login-box {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 20px; padding: 3rem 2.5rem; width: 360px;
+      box-shadow: 0 0 80px rgba(124,106,255,.15);
+    }
+    .login-box h1 { font-size: 1.6rem; font-weight: 800; margin-bottom: .3rem; }
+    .login-box p { color: var(--muted); font-size: .9rem; margin-bottom: 2rem; }
+    .login-logo { font-size: 3rem; margin-bottom: 1rem; }
+
+    /* ── Layout ── */
+    #app { display: none; }
+    .layout { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+    .sidebar {
+      background: var(--surface); border-right: 1px solid var(--border);
+      padding: 1.5rem 1rem; display: flex; flex-direction: column; gap: .3rem;
+      position: sticky; top: 0; height: 100vh; overflow-y: auto;
+    }
+    .sidebar-logo {
+      font-size: 1.1rem; font-weight: 800; padding: .8rem 1rem 1.5rem;
+      color: var(--accent); letter-spacing: -.5px;
+    }
+    .sidebar-logo span { color: var(--accent2); }
+    .nav-item {
+      display: flex; align-items: center; gap: .7rem; padding: .7rem 1rem;
+      border-radius: 10px; cursor: pointer; font-size: .9rem; font-weight: 600;
+      color: var(--muted); transition: all .2s; border: none; background: none; width: 100%; text-align: left;
+    }
+    .nav-item:hover { background: var(--card); color: var(--text); }
+    .nav-item.active { background: var(--accent); color: #fff; }
+    .nav-item .icon { font-size: 1.1rem; width: 20px; text-align: center; }
+    .nav-section { font-size: .7rem; color: var(--muted); padding: 1rem 1rem .3rem; text-transform: uppercase; letter-spacing: 1px; }
+    .sidebar-bot-selector { margin-bottom: .5rem; }
+    .sidebar-footer { margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--border); }
+
+    main { padding: 2rem; overflow-y: auto; }
+    .page { display: none; }
+    .page.active { display: block; }
+    h2.page-title { font-size: 1.5rem; font-weight: 800; margin-bottom: 1.5rem; }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 16px; padding: 1.5rem;
+    }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
+
+    /* ── Stat cards ── */
+    .stat { text-align: center; }
+    .stat .val { font-size: 2.2rem; font-weight: 800; color: var(--accent); font-family: var(--mono); }
+    .stat .lbl { font-size: .8rem; color: var(--muted); margin-top: .2rem; }
+
+    /* ── Forms ── */
+    .form-group { margin-bottom: 1.2rem; }
+    label { display: block; font-size: .85rem; color: var(--muted); margin-bottom: .4rem; font-weight: 600; }
+    input, textarea, select {
+      width: 100%; padding: .75rem 1rem; background: var(--surface);
+      border: 1px solid var(--border); border-radius: 10px; color: var(--text);
+      font-family: var(--font); font-size: .9rem; transition: border .2s;
+    }
+    input:focus, textarea:focus, select:focus { outline: none; border-color: var(--accent); }
+    textarea { resize: vertical; min-height: 120px; }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex; align-items: center; gap: .4rem; padding: .65rem 1.3rem;
+      border-radius: 10px; font-family: var(--font); font-weight: 600; font-size: .85rem;
+      cursor: pointer; transition: all .2s; border: none;
+    }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: #6a58e8; transform: translateY(-1px); }
+    .btn-success { background: var(--accent2); color: #000; }
+    .btn-success:hover { background: #00bfa0; }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-danger:hover { background: #e63e4b; }
+    .btn-ghost { background: var(--surface); border: 1px solid var(--border); color: var(--text); }
+    .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-sm { padding: .4rem .9rem; font-size: .8rem; }
+    .btn-full { width: 100%; justify-content: center; }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* ── Tables ── */
+    table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+    th { text-align: left; padding: .8rem 1rem; color: var(--muted); font-size: .8rem; text-transform: uppercase; letter-spacing: .5px; border-bottom: 1px solid var(--border); }
+    td { padding: .9rem 1rem; border-bottom: 1px solid #1e1e30; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(124,106,255,.04); }
+
+    /* ── Badges ── */
+    .badge { display: inline-block; padding: .2rem .6rem; border-radius: 6px; font-size: .75rem; font-weight: 600; }
+    .badge-green { background: rgba(0,212,170,.15); color: var(--accent2); }
+    .badge-red { background: rgba(255,71,87,.15); color: var(--danger); }
+    .badge-gray { background: rgba(107,107,138,.15); color: var(--muted); }
+    .badge-purple { background: rgba(124,106,255,.15); color: var(--accent); }
+
+    /* ── Upload Zone ── */
+    .upload-zone {
+      border: 2px dashed var(--border); border-radius: 16px; padding: 3rem;
+      text-align: center; cursor: pointer; transition: all .2s;
+    }
+    .upload-zone:hover, .upload-zone.drag-over { border-color: var(--accent); background: rgba(124,106,255,.05); }
+    .upload-zone .icon { font-size: 3rem; margin-bottom: 1rem; }
+    .upload-zone p { color: var(--muted); font-size: .9rem; }
+
+    /* ── Code editor ── */
+    .code-editor {
+      background: #0a0a12; border: 1px solid var(--border);
+      border-radius: 12px; overflow: hidden;
+    }
+    .code-editor-header {
+      padding: .7rem 1rem; background: var(--surface); border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: .8rem; color: var(--muted);
+    }
+    .code-editor textarea {
+      background: #0a0a12; border: none; border-radius: 0; font-family: var(--mono);
+      font-size: .85rem; min-height: 400px; padding: 1.5rem;
+    }
+
+    /* ── Modal ── */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.7);
+      display: flex; align-items: center; justify-content: center; z-index: 999;
+      display: none; backdrop-filter: blur(4px);
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--card); border: 1px solid var(--border); border-radius: 20px;
+      padding: 2rem; width: 540px; max-width: 95vw; max-height: 90vh; overflow-y: auto;
+    }
+    .modal h3 { font-size: 1.2rem; font-weight: 800; margin-bottom: 1.5rem; }
+
+    /* ── Toast ── */
+    #toast-container { position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 9999; display: flex; flex-direction: column; gap: .5rem; }
+    .toast {
+      padding: .9rem 1.5rem; border-radius: 12px; font-size: .9rem; font-weight: 600;
+      box-shadow: 0 8px 30px rgba(0,0,0,.3); animation: slideIn .3s ease;
+    }
+    .toast-success { background: var(--accent2); color: #000; }
+    .toast-error { background: var(--danger); color: #fff; }
+    .toast-info { background: var(--accent); color: #fff; }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: none; opacity: 1; } }
+
+    /* ── Bot card ── */
+    .bot-card {
+      background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+      padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem;
+    }
+    .bot-card-header { display: flex; align-items: center; gap: 1rem; }
+    .bot-avatar {
+      width: 48px; height: 48px; border-radius: 14px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem; flex-shrink: 0;
+    }
+    .bot-name { font-weight: 800; font-size: 1rem; }
+    .bot-username { font-size: .8rem; color: var(--muted); font-family: var(--mono); }
+    .bot-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+
+    /* ── Miniapp card ── */
+    .miniapp-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 1.2rem; display: flex; align-items: center; gap: 1rem;
+    }
+    .miniapp-icon { font-size: 2rem; }
+    .miniapp-info { flex: 1; min-width: 0; }
+    .miniapp-name { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .miniapp-meta { font-size: .8rem; color: var(--muted); margin-top: .2rem; }
+    .miniapp-actions { display: flex; gap: .4rem; flex-shrink: 0; }
+
+    /* ── Charts ── */
+    .chart-bar-container { display: flex; flex-direction: column; gap: .4rem; }
+    .chart-bar-row { display: flex; align-items: center; gap .8rem; }
+    .chart-bar-label { width: 60px; font-size: .75rem; color: var(--muted); text-align: right; flex-shrink: 0; }
+    .chart-bar-track { flex: 1; height: 8px; background: var(--surface); border-radius: 4px; overflow: hidden; }
+    .chart-bar-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 4px; transition: width .6s ease; }
+    .chart-bar-val { width: 40px; font-size: .75rem; font-family: var(--mono); color: var(--muted); }
+
+    /* ── Drag & drop builder ── */
+    .builder-components { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; }
+    .component-chip {
+      padding: .6rem .5rem; border: 1px solid var(--border); border-radius: 8px;
+      cursor: grab; text-align: center; font-size: .75rem; background: var(--surface);
+      transition: all .2s; user-select: none;
+    }
+    .component-chip:hover { border-color: var(--accent); color: var(--accent); }
+    .component-chip .ci { font-size: 1.4rem; display: block; margin-bottom: .2rem; }
+
+    /* ── Responsive ── */
+    @media (max-width: 768px) {
+      .layout { grid-template-columns: 1fr; }
+      .sidebar { display: none; }
+      .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+    }
+
+    .separator { height: 1px; background: var(--border); margin: 1rem 0; }
+    .flex { display: flex; } .items-center { align-items: center; } .gap-1 { gap: .5rem; } .gap-2 { gap: 1rem; }
+    .justify-between { justify-content: space-between; } .mb-1 { margin-bottom: .5rem; } .mb-2 { margin-bottom: 1rem; }
+    .mt-1 { margin-top: .5rem; } .mt-2 { margin-top: 1rem; } .text-muted { color: var(--muted); font-size: .85rem; }
+    .text-mono { font-family: var(--mono); font-size: .85rem; }
+    .w-full { width: 100%; } .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+<!-- ── Login Screen ── -->
+<div id="loginScreen">
+  <div class="login-box">
+    <div class="login-logo">🤖</div>
+    <h1>TMA Platform</h1>
+    <p>Telegram Mini App Platform</p>
+    <div class="form-group">
+      <label>Username</label>
+      <input id="loginUser" type="text" placeholder="admin" value="admin" />
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input id="loginPass" type="password" placeholder="••••••" value="admin123" />
+    </div>
+    <button class="btn btn-primary btn-full" onclick="login()">🔐 Đăng nhập</button>
+    <p style="margin-top:1rem;font-size:.8rem;color:var(--muted);text-align:center">
+      Default: admin / admin123
+    </p>
+  </div>
+</div>
+
+<!-- ── App ── -->
+<div id="app">
+  <div class="layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-logo">🤖 TMA<span>Platform</span></div>
+
+      <div class="nav-section">Tổng quan</div>
+      <button class="nav-item active" onclick="navigate('home')" id="nav-home">
+        <span class="icon">🏠</span> Dashboard
+      </button>
+
+      <div class="nav-section">Bot hiện tại</div>
+      <select id="botSelector" class="sidebar-bot-selector" style="font-size:.8rem;padding:.5rem .7rem;border-radius:8px;" onchange="selectBot(this.value)">
+        <option value="">-- Chọn bot --</option>
+      </select>
+
+      <button class="nav-item" onclick="navigate('miniapps')" id="nav-miniapps">
+        <span class="icon">📱</span> Mini Apps
+      </button>
+      <button class="nav-item" onclick="navigate('users')" id="nav-users">
+        <span class="icon">👥</span> Người dùng
+      </button>
+      <button class="nav-item" onclick="navigate('analytics')" id="nav-analytics">
+        <span class="icon">📊</span> Analytics
+      </button>
+      <button class="nav-item" onclick="navigate('webhooks')" id="nav-webhooks">
+        <span class="icon">🔗</span> Webhooks
+      </button>
+      <button class="nav-item" onclick="navigate('broadcast')" id="nav-broadcast">
+        <span class="icon">📣</span> Broadcast
+      </button>
+      <button class="nav-item" onclick="navigate('settings')" id="nav-settings">
+        <span class="icon">⚙️</span> Cài đặt Bot
+      </button>
+
+      <div class="nav-section">Quản trị</div>
+      <button class="nav-item" onclick="navigate('bots')" id="nav-bots">
+        <span class="icon">🤖</span> Quản lý Bots
+      </button>
+      <button class="nav-item" onclick="navigate('builder')" id="nav-builder">
+        <span class="icon">🎨</span> Builder HTML
+      </button>
+
+      <div class="sidebar-footer">
+        <button class="nav-item" onclick="logout()" style="color:var(--danger)">
+          <span class="icon">🚪</span> Đăng xuất
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main content -->
+    <main>
+
+      <!-- ── HOME ── -->
+      <div class="page active" id="page-home">
+        <h2 class="page-title">🏠 Dashboard</h2>
+        <div class="grid-4 mb-2" id="globalStats">
+          <div class="card stat"><div class="val" id="gs-bots">0</div><div class="lbl">Total Bots</div></div>
+          <div class="card stat"><div class="val" id="gs-apps">0</div><div class="lbl">Mini Apps</div></div>
+          <div class="card stat"><div class="val" id="gs-users">0</div><div class="lbl">Users</div></div>
+          <div class="card stat"><div class="val" id="gs-events">0</div><div class="lbl">Events</div></div>
+        </div>
+        <div class="card">
+          <div class="flex items-center justify-between mb-2">
+            <b>Bots đang hoạt động</b>
+            <button class="btn btn-primary btn-sm" onclick="navigate('bots')">+ Thêm Bot</button>
+          </div>
+          <div id="homeBotList"></div>
+        </div>
+      </div>
+
+      <!-- ── BOTS ── -->
+      <div class="page" id="page-bots">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="page-title" style="margin-bottom:0">🤖 Quản lý Bots</h2>
+          <button class="btn btn-primary" onclick="openModal('addBot')">+ Thêm Bot</button>
+        </div>
+        <div id="botList" style="display:grid;gap:1rem;"></div>
+      </div>
+
+      <!-- ── MINIAPPS ── -->
+      <div class="page" id="page-miniapps">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="page-title" style="margin-bottom:0">📱 Mini Apps</h2>
+          <div class="flex gap-1">
+            <button class="btn btn-ghost btn-sm" onclick="openModal('htmlEditor')">✏️ Editor HTML</button>
+            <button class="btn btn-primary btn-sm" onclick="openModal('uploadApp')">+ Upload</button>
+          </div>
+        </div>
+        <div id="miniappList" style="display:grid;gap:.7rem;"></div>
+        <div id="noAppMsg" class="card hidden" style="text-align:center;padding:3rem;color:var(--muted)">
+          <div style="font-size:3rem;margin-bottom:1rem">📭</div>
+          <p>Chưa có Mini App nào. Upload file HTML để bắt đầu!</p>
+        </div>
+      </div>
+
+      <!-- ── ANALYTICS ── -->
+      <div class="page" id="page-analytics">
+        <h2 class="page-title">📊 Analytics</h2>
+        <div class="grid-4 mb-2">
+          <div class="card stat"><div class="val" id="an-users">0</div><div class="lbl">Users</div></div>
+          <div class="card stat"><div class="val" id="an-events">0</div><div class="lbl">Events</div></div>
+          <div class="card stat"><div class="val" id="an-starts">0</div><div class="lbl">Starts</div></div>
+          <div class="card stat"><div class="val" id="an-opens">0</div><div class="lbl">App Opens</div></div>
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <b class="mb-2" style="display:block">📈 Hoạt động 7 ngày</b>
+            <div id="dailyChart" class="chart-bar-container"></div>
+          </div>
+          <div class="card">
+            <b class="mb-2" style="display:block">🔥 Top Mini Apps</b>
+            <div id="topAppsChart" class="chart-bar-container"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── USERS ── -->
+      <div class="page" id="page-users">
+        <h2 class="page-title">👥 Người dùng Telegram</h2>
+        <div class="card mb-2">
+          <input id="userSearch" placeholder="🔍 Tìm theo username, tên..." oninput="loadUsers()" />
+        </div>
+        <div class="card">
+          <table>
+            <thead><tr><th>ID</th><th>Tên</th><th>Username</th><th>Lần cuối</th><th>Số tin</th></tr></thead>
+            <tbody id="userTable"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── WEBHOOKS ── -->
+      <div class="page" id="page-webhooks">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="page-title" style="margin-bottom:0">🔗 Webhooks</h2>
+          <button class="btn btn-primary btn-sm" onclick="openModal('addWebhook')">+ Thêm</button>
+        </div>
+        <div id="webhookList" style="display:grid;gap:.7rem;"></div>
+      </div>
+
+      <!-- ── BROADCAST ── -->
+      <div class="page" id="page-broadcast">
+        <h2 class="page-title">📣 Broadcast</h2>
+        <div class="card" style="max-width:600px">
+          <div class="form-group">
+            <label>Nội dung tin nhắn (hỗ trợ HTML)</label>
+            <textarea id="broadcastMsg" placeholder="&lt;b&gt;Thông báo quan trọng!&lt;/b&gt;\n\nNội dung..."></textarea>
+          </div>
+          <div id="broadcastInfo" class="text-muted mb-2">Sẽ gửi tới tất cả người dùng của bot đang chọn</div>
+          <button class="btn btn-primary" onclick="sendBroadcast()">📣 Gửi Broadcast</button>
+        </div>
+      </div>
+
+      <!-- ── SETTINGS ── -->
+      <div class="page" id="page-settings">
+        <h2 class="page-title">⚙️ Cài đặt Bot</h2>
+        <div class="card" style="max-width:600px">
+          <div class="form-group">
+            <label>Tin nhắn chào mừng (khi /start)</label>
+            <textarea id="settWelcome" placeholder="Chào mừng bạn! Nhấn nút để mở Mini App."></textarea>
+          </div>
+          <div class="form-group">
+            <label>Text nút mở Mini App</label>
+            <input id="settBtnText" placeholder="🚀 Mở Mini App" />
+          </div>
+          <button class="btn btn-primary" onclick="saveSettings()">💾 Lưu cài đặt</button>
+        </div>
+      </div>
+
+      <!-- ── BUILDER ── -->
+      <div class="page" id="page-builder">
+        <h2 class="page-title">🎨 HTML Builder</h2>
+        <div class="grid-2" style="align-items:start">
+          <div>
+            <div class="card mb-2">
+              <b style="display:block;margin-bottom:1rem">Components</b>
+              <div class="builder-components" id="builderComponents"></div>
+            </div>
+            <div class="card">
+              <div class="flex justify-between items-center mb-2">
+                <b>Preview</b>
+                <div class="flex gap-1">
+                  <button class="btn btn-ghost btn-sm" onclick="refreshPreview()">🔄</button>
+                  <select id="previewDevice" onchange="changeDevice()">
+                    <option value="375">📱 Mobile</option>
+                    <option value="768">💻 Tablet</option>
+                    <option value="100%">🖥️ Desktop</option>
+                  </select>
+                </div>
+              </div>
+              <iframe id="previewFrame"
+                style="width:375px;height:500px;border:none;border-radius:12px;background:#fff;display:block;margin:auto;"
+              ></iframe>
+            </div>
+          </div>
+          <div>
+            <div class="code-editor">
+              <div class="code-editor-header">
+                <span>📄 HTML Editor</span>
+                <div class="flex gap-1">
+                  <button class="btn btn-ghost btn-sm" onclick="formatCode()">✨ Format</button>
+                  <button class="btn btn-ghost btn-sm" onclick="copyCode()">📋 Copy</button>
+                  <button class="btn btn-primary btn-sm" onclick="saveBuilderApp()">💾 Save</button>
+                </div>
+              </div>
+              <textarea id="builderCode" spellcheck="false" oninput="debouncePreview()" placeholder="<!-- Bắt đầu viết HTML ở đây -->
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name='viewport' content='width=device-width, initial-scale=1'>
+  <script src='https://telegram.org/js/telegram-web-app.js'></script>
+  <style>
+    body { font-family: sans-serif; padding: 1rem; background: var(--tg-theme-bg-color); color: var(--tg-theme-text-color); }
+  </style>
+</head>
+<body>
+  <h1>Hello Mini App! 👋</h1>
+</body>
+</html>"></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- ── MODALS ── -->
+<div class="modal-overlay" id="modal-addBot">
+  <div class="modal">
+    <h3>🤖 Thêm Bot mới</h3>
+    <div class="form-group">
+      <label>Bot Token (từ @BotFather)</label>
+      <input id="newBotToken" type="password" placeholder="1234567890:ABC..." />
+    </div>
+    <div class="form-group">
+      <label>Tin nhắn chào mừng</label>
+      <textarea id="newBotWelcome" placeholder="Chào mừng! Nhấn nút để mở Mini App." style="min-height:80px"></textarea>
+    </div>
+    <div class="form-group">
+      <label>Text nút Mini App</label>
+      <input id="newBotBtnText" placeholder="🚀 Mở Mini App" />
+    </div>
+    <div class="flex gap-1 justify-between">
+      <button class="btn btn-ghost" onclick="closeModal('addBot')">Huỷ</button>
+      <button class="btn btn-primary" onclick="createBot()">✅ Tạo Bot</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-uploadApp">
+  <div class="modal">
+    <h3>📱 Upload Mini App</h3>
+    <div class="form-group">
+      <label>Tên Mini App</label>
+      <input id="uploadAppName" placeholder="My Awesome App" />
+    </div>
+    <div class="form-group">
+      <label>Mô tả (tùy chọn)</label>
+      <input id="uploadAppDesc" placeholder="Mô tả ngắn..." />
+    </div>
+    <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()" ondragover="event.preventDefault();this.classList.add('drag-over')" ondrop="handleDrop(event)" ondragleave="this.classList.remove('drag-over')">
+      <input type="file" id="fileInput" accept=".html,.htm" hidden onchange="handleFileSelect(this)" />
+      <div class="icon">📁</div>
+      <p>Kéo thả file HTML vào đây<br>hoặc <strong>click để chọn</strong></p>
+      <p id="selectedFileName" style="margin-top:.5rem;color:var(--accent);font-weight:600"></p>
+    </div>
+    <div class="form-group mt-2">
+      <label><input type="checkbox" id="uploadIsDefault" style="width:auto;margin-right:.4rem" /> Đặt làm Mini App mặc định</label>
+    </div>
+    <div class="flex gap-1 justify-between mt-2">
+      <button class="btn btn-ghost" onclick="closeModal('uploadApp')">Huỷ</button>
+      <button class="btn btn-primary" onclick="uploadMiniApp()">⬆️ Upload</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-htmlEditor">
+  <div class="modal" style="width:760px;max-width:95vw">
+    <h3>✏️ HTML Editor</h3>
+    <div class="form-group">
+      <label>Tên Mini App</label>
+      <input id="editorAppName" placeholder="My App" />
+    </div>
+    <div class="form-group">
+      <label>ID Mini App (để cập nhật, để trống = tạo mới)</label>
+      <input id="editorAppId" placeholder="(tự tạo)" />
+    </div>
+    <div class="code-editor">
+      <div class="code-editor-header">
+        <span>HTML</span>
+        <button class="btn btn-ghost btn-sm" onclick="insertTemplate()">📄 Template</button>
+      </div>
+      <textarea id="editorCode" spellcheck="false" style="min-height:300px"></textarea>
+    </div>
+    <div class="flex gap-1 justify-between mt-2">
+      <button class="btn btn-ghost" onclick="closeModal('htmlEditor')">Huỷ</button>
+      <button class="btn btn-primary" onclick="saveEditorCode()">💾 Lưu</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-addWebhook">
+  <div class="modal">
+    <h3>🔗 Thêm Webhook</h3>
+    <div class="form-group">
+      <label>URL</label>
+      <input id="whUrl" placeholder="https://your-server.com/webhook" />
+    </div>
+    <div class="form-group">
+      <label>Events</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem;font-size:.85rem">
+        <label><input type="checkbox" class="wh-event" value="start"> /start</label>
+        <label><input type="checkbox" class="wh-event" value="message"> message</label>
+        <label><input type="checkbox" class="wh-event" value="miniapp_open"> miniapp_open</label>
+        <label><input type="checkbox" class="wh-event" value="webapp_data"> webapp_data</label>
+        <label><input type="checkbox" class="wh-event" value="payment"> payment</label>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Secret (tùy chọn)</label>
+      <input id="whSecret" placeholder="secret_key" />
+    </div>
+    <div class="flex gap-1 justify-between">
+      <button class="btn btn-ghost" onclick="closeModal('addWebhook')">Huỷ</button>
+      <button class="btn btn-primary" onclick="createWebhook()">✅ Tạo</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<script>
+// ── State ──
+let token = localStorage.getItem('tma_token') || '';
+let currentBotId = localStorage.getItem('tma_bot') || '';
+let selectedFile = null;
+let previewDebounce = null;
+
+// ── Init ──
+if (token) {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  init();
+}
+
+async function init() {
+  await loadAllBots();
+  await loadHome();
+}
+
+// ── API helper ──
+async function api(method, path, body, isFormData) {
+  const opts = {
+    method,
+    headers: { 'Authorization': `Bearer ${token}` }
+  };
+  if (body && !isFormData) {
+    opts.headers['Content-Type'] = 'application/json';
+    opts.body = JSON.stringify(body);
+  } else if (body && isFormData) {
+    opts.body = body;
+  }
+  const res = await fetch(`/api${path}`, opts);
+  return res.json();
+}
+
+// ── Auth ──
+async function login() {
+  const username = document.getElementById('loginUser').value;
+  const password = document.getElementById('loginPass').value;
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await res.json();
+    if (data.success) {
+      token = data.token;
+      localStorage.setItem('tma_token', token);
+      document.getElementById('loginScreen').style.display = 'none';
+      document.getElementById('app').style.display = 'block';
+      await init();
+    } else {
+      toast('❌ ' + data.error, 'error');
+    }
+  } catch (e) { toast('❌ Lỗi kết nối', 'error'); }
+}
+
+function logout() {
+  localStorage.removeItem('tma_token');
+  localStorage.removeItem('tma_bot');
+  location.reload();
+}
+
+// ── Navigation ──
+function navigate(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + page)?.classList.add('active');
+  document.getElementById('nav-' + page)?.classList.add('active');
+
+  if (page === 'home') loadHome();
+  if (page === 'bots') loadBotList();
+  if (page === 'miniapps') loadMiniapps();
+  if (page === 'analytics') loadAnalytics();
+  if (page === 'users') loadUsers();
+  if (page === 'webhooks') loadWebhooks();
+  if (page === 'settings') loadSettings();
+  if (page === 'builder') initBuilder();
+}
+
+// ── Bot selector ──
+async function loadAllBots() {
+  const data = await api('GET', '/bots');
+  if (!data.success) return;
+
+  const sel = document.getElementById('botSelector');
+  sel.innerHTML = '<option value="">-- Chọn bot --</option>';
+  data.bots.forEach(b => {
+    const opt = document.createElement('option');
+    opt.value = b.id;
+    opt.textContent = `@${b.username || b.name}`;
+    if (b.id === currentBotId) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  return data.bots;
+}
+
+function selectBot(id) {
+  currentBotId = id;
+  localStorage.setItem('tma_bot', id);
+  const page = document.querySelector('.page.active')?.id?.replace('page-','');
+  if (page && page !== 'home' && page !== 'bots') navigate(page);
+}
+
+// ── Home ──
+async function loadHome() {
+  const data = await api('GET', '/bots');
+  if (!data.success) return;
+  const bots = data.bots;
+
+  document.getElementById('gs-bots').textContent = bots.length;
+  document.getElementById('gs-apps').textContent = bots.reduce((s,b) => s + (b.miniapp_count||0), 0);
+  document.getElementById('gs-users').textContent = bots.reduce((s,b) => s + (b.user_count||0), 0);
+  document.getElementById('gs-events').textContent = bots.reduce((s,b) => s + (b.event_count||0), 0);
+
+  const el = document.getElementById('homeBotList');
+  if (!bots.length) {
+    el.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--muted)">Chưa có bot nào. <a href="#" onclick="navigate(\'bots\')" style="color:var(--accent)">Thêm bot ngay!</a></div>';
+    return;
+  }
+  el.innerHTML = bots.map(b => `
+    <div style="display:flex;align-items:center;gap:1rem;padding:.8rem 0;border-bottom:1px solid var(--border)">
+      <span class="badge ${b.isRunning ? 'badge-green' : 'badge-red'}">${b.isRunning ? '🟢 ON' : '🔴 OFF'}</span>
+      <div style="flex:1"><b>@${b.username||b.name}</b> <span class="text-muted">${b.miniapp_count||0} apps · ${b.user_count||0} users</span></div>
+      <button class="btn btn-ghost btn-sm" onclick="currentBotId='${b.id}';localStorage.setItem('tma_bot','${b.id}');document.getElementById('botSelector').value='${b.id}';navigate('miniapps')">Quản lý</button>
+    </div>
+  `).join('');
+}
+
+// ── Bot List ──
+async function loadBotList() {
+  const data = await api('GET', '/bots');
+  if (!data.success) return;
+
+  const el = document.getElementById('botList');
+  if (!data.bots.length) {
+    el.innerHTML = '<div class="card" style="text-align:center;padding:3rem;color:var(--muted)"><div style="font-size:3rem;margin-bottom:1rem">🤖</div><p>Chưa có bot nào</p></div>';
+    return;
+  }
+
+  el.innerHTML = data.bots.map(b => `
+    <div class="bot-card">
+      <div class="bot-card-header">
+        <div class="bot-avatar">🤖</div>
+        <div style="flex:1">
+          <div class="bot-name">${b.name || b.username}</div>
+          <div class="bot-username">@${b.username || '?'}</div>
+        </div>
+        <span class="badge ${b.isRunning ? 'badge-green' : 'badge-red'}">${b.isRunning ? '🟢 Running' : '🔴 Stopped'}</span>
+      </div>
+      <div style="font-size:.85rem;color:var(--muted);font-family:var(--mono)">Token: ${b.token} · ${b.miniapp_count||0} apps · ${b.user_count||0} users</div>
+      <div class="bot-actions">
+        <button class="btn btn-ghost btn-sm" onclick="selectBotAndGo('${b.id}','miniapps')">📱 Mini Apps</button>
+        <button class="btn btn-ghost btn-sm" onclick="selectBotAndGo('${b.id}','analytics')">📊 Stats</button>
+        ${b.isRunning
+          ? `<button class="btn btn-ghost btn-sm" onclick="botAction('${b.id}','stop')">⏹ Stop</button>`
+          : `<button class="btn btn-success btn-sm" onclick="botAction('${b.id}','start')">▶️ Start</button>`
+        }
+        <button class="btn btn-ghost btn-sm" onclick="botAction('${b.id}','restart')">🔄 Restart</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteBot('${b.id}')">🗑️ Xoá</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function selectBotAndGo(id, page) {
+  currentBotId = id;
+  localStorage.setItem('tma_bot', id);
+  document.getElementById('botSelector').value = id;
+  navigate(page);
+}
+
+async function createBot() {
+  const token_val = document.getElementById('newBotToken').value.trim();
+  if (!token_val) { toast('Nhập token!', 'error'); return; }
+
+  toast('⏳ Đang xác thực token...', 'info');
+  const data = await api('POST', '/bots', {
+    token: token_val,
+    welcomeMessage: document.getElementById('newBotWelcome').value,
+    welcomeButtonText: document.getElementById('newBotBtnText').value
+  });
+
+  if (data.success) {
+    toast('✅ Bot @' + data.bot.username + ' đã tạo!', 'success');
+    closeModal('addBot');
+    document.getElementById('newBotToken').value = '';
+    await loadAllBots();
+    await loadBotList();
+  } else {
+    toast('❌ ' + data.error, 'error');
+  }
+}
+
+async function botAction(id, action) {
+  const data = await api('POST', `/bots/${id}/${action}`);
+  if (data.success) {
+    toast('✅ Bot ' + action, 'success');
+    await loadBotList();
+    await loadAllBots();
+    await loadHome();
+  } else {
+    toast('❌ ' + data.error, 'error');
+  }
+}
+
+async function deleteBot(id) {
+  if (!confirm('Xoá bot này? Tất cả dữ liệu sẽ bị xoá.')) return;
+  const data = await api('DELETE', `/bots/${id}`);
+  if (data.success) {
+    toast('✅ Đã xoá bot', 'success');
+    if (currentBotId === id) { currentBotId = ''; localStorage.removeItem('tma_bot'); }
+    await loadAllBots();
+    await loadBotList();
+    await loadHome();
+  }
+}
+
+// ── Mini Apps ──
+async function loadMiniapps() {
+  if (!currentBotId) { showNoBotMsg('miniappList'); return; }
+  const data = await api('GET', `/bots/${currentBotId}/miniapps`);
+  if (!data.success) return;
+
+  const el = document.getElementById('miniappList');
+  const noMsg = document.getElementById('noAppMsg');
+
+  if (!data.miniapps.length) {
+    el.innerHTML = '';
+    noMsg.classList.remove('hidden');
+    return;
+  }
+  noMsg.classList.add('hidden');
+
+  const baseUrl = window.location.origin;
+  el.innerHTML = data.miniapps.map(app => `
+    <div class="miniapp-card">
+      <div class="miniapp-icon">📱</div>
+      <div class="miniapp-info">
+        <div class="miniapp-name">${app.name} ${app.is_default ? '<span class="badge badge-purple">Default</span>' : ''}</div>
+        <div class="miniapp-meta">${app.filename} · ${app.access_count} lượt mở</div>
+        <div class="miniapp-meta text-mono" style="word-break:break-all">${baseUrl}/app/${currentBotId}/${app.id}</div>
+      </div>
+      <div class="miniapp-actions">
+        <button class="btn btn-ghost btn-sm" onclick="editApp('${app.id}','${esc(app.name)}')">✏️</button>
+        ${!app.is_default ? `<button class="btn btn-ghost btn-sm" onclick="setDefault('${app.id}')">⭐</button>` : ''}
+        <a href="/app/${currentBotId}/${app.id}" target="_blank" class="btn btn-ghost btn-sm">👁️</a>
+        <button class="btn btn-danger btn-sm" onclick="deleteApp('${app.id}')">🗑️</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function uploadMiniApp() {
+  if (!currentBotId) { toast('Chọn bot trước!', 'error'); return; }
+  if (!selectedFile) { toast('Chọn file HTML!', 'error'); return; }
+
+  const form = new FormData();
+  form.append('file', selectedFile);
+  form.append('name', document.getElementById('uploadAppName').value || selectedFile.name);
+  form.append('description', document.getElementById('uploadAppDesc').value);
+  form.append('isDefault', document.getElementById('uploadIsDefault').checked);
+
+  const data = await api('POST', `/bots/${currentBotId}/miniapps`, form, true);
+  if (data.success) {
+    toast('✅ Upload thành công!', 'success');
+    closeModal('uploadApp');
+    selectedFile = null;
+    document.getElementById('selectedFileName').textContent = '';
+    await loadMiniapps();
+  } else {
+    toast('❌ ' + data.error, 'error');
+  }
+}
+
+async function saveEditorCode() {
+  if (!currentBotId) { toast('Chọn bot trước!', 'error'); return; }
+  const name = document.getElementById('editorAppName').value || 'My App';
+  const htmlContent = document.getElementById('editorCode').value;
+  const appId = document.getElementById('editorAppId').value.trim();
+
+  if (!htmlContent) { toast('Nhập HTML!', 'error'); return; }
+
+  let data;
+  if (appId) {
+    data = await api('PUT', `/bots/${currentBotId}/miniapps/${appId}`, { name, htmlContent });
+  } else {
+    data = await api('POST', `/bots/${currentBotId}/miniapps`, { name, htmlContent });
+  }
+
+  if (data.success) {
+    toast('✅ Đã lưu Mini App!', 'success');
+    closeModal('htmlEditor');
+    await loadMiniapps();
+  } else {
+    toast('❌ ' + data.error, 'error');
+  }
+}
+
+async function editApp(id, name) {
+  const data = await api('GET', `/bots/${currentBotId}/miniapps/${id}/content`);
+  if (data.success) {
+    document.getElementById('editorAppId').value = id;
+    document.getElementById('editorAppName').value = name;
+    document.getElementById('editorCode').value = data.content;
+    openModal('htmlEditor');
+  } else {
+    toast('Chỉ có thể edit file HTML', 'error');
+  }
+}
+
+async function setDefault(id) {
+  const data = await api('POST', `/bots/${currentBotId}/miniapps/${id}/set-default`);
+  if (data.success) { toast('✅ Đã đặt làm default', 'success'); await loadMiniapps(); }
+}
+
+async function deleteApp(id) {
+  if (!confirm('Xoá Mini App này?')) return;
+  const data = await api('DELETE', `/bots/${currentBotId}/miniapps/${id}`);
+  if (data.success) { toast('✅ Đã xoá', 'success'); await loadMiniapps(); }
+}
+
+// ── Analytics ──
+async function loadAnalytics() {
+  if (!currentBotId) { return; }
+  const data = await api('GET', `/bots/${currentBotId}/analytics?days=7`);
+  if (!data.success) return;
+
+  const ov = data.overview || {};
+  document.getElementById('an-users').textContent = ov.unique_users || 0;
+  document.getElementById('an-events').textContent = ov.total_events || 0;
+  document.getElementById('an-starts').textContent = ov.starts || 0;
+  document.getElementById('an-opens').textContent = ov.webapp_interactions || 0;
+
+  // Daily chart
+  const daily = data.daily || [];
+  const maxEvt = Math.max(...daily.map(d => d.events), 1);
+  document.getElementById('dailyChart').innerHTML = daily.length ? daily.map(d => `
+    <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.3rem">
+      <span style="width:70px;font-size:.72rem;color:var(--muted);text-align:right;flex-shrink:0">${d.date.slice(5)}</span>
+      <div class="chart-bar-track"><div class="chart-bar-fill" style="width:${Math.round(d.events/maxEvt*100)}%"></div></div>
+      <span style="width:30px;font-size:.72rem;font-family:var(--mono);color:var(--muted)">${d.events}</span>
+    </div>
+  `).join('') : '<p class="text-muted">Chưa có dữ liệu</p>';
+
+  // Top apps
+  const apps = data.topApps || [];
+  const maxAcc = Math.max(...apps.map(a => a.access_count), 1);
+  document.getElementById('topAppsChart').innerHTML = apps.length ? apps.map(a => `
+    <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.3rem">
+      <span style="width:80px;font-size:.72rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right;flex-shrink:0">${a.name}</span>
+      <div class="chart-bar-track"><div class="chart-bar-fill" style="width:${Math.round(a.access_count/maxAcc*100)}%"></div></div>
+      <span style="width:30px;font-size:.72rem;font-family:var(--mono);color:var(--muted)">${a.access_count}</span>
+    </div>
+  `).join('') : '<p class="text-muted">Chưa có dữ liệu</p>';
+}
+
+// ── Users ──
+async function loadUsers() {
+  if (!currentBotId) return;
+  const search = document.getElementById('userSearch')?.value || '';
+  const data = await api('GET', `/bots/${currentBotId}/users?search=${encodeURIComponent(search)}&limit=100`);
+  if (!data.success) return;
+
+  const tb = document.getElementById('userTable');
+  tb.innerHTML = data.users.map(u => `
+    <tr>
+      <td class="text-mono">${u.telegram_id}</td>
+      <td>${u.first_name || ''} ${u.last_name || ''}</td>
+      <td class="text-mono">${u.username ? '@'+u.username : '-'}</td>
+      <td class="text-mono" style="font-size:.8rem">${u.last_seen?.slice(0,16) || '-'}</td>
+      <td>${u.message_count || 0}</td>
+    </tr>
+  `).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--muted)">Chưa có người dùng</td></tr>';
+}
+
+// ── Webhooks ──
+async function loadWebhooks() {
+  if (!currentBotId) return;
+  const data = await api('GET', `/bots/${currentBotId}/webhooks`);
+  if (!data.success) return;
+
+  const el = document.getElementById('webhookList');
+  el.innerHTML = data.webhooks.map(w => `
+    <div class="card flex items-center gap-2">
+      <div style="flex:1">
+        <div class="text-mono">${w.url}</div>
+        <div class="text-muted mt-1">Events: ${w.events} · <span class="badge ${w.active ? 'badge-green' : 'badge-red'}">${w.active ? 'Active' : 'Inactive'}</span></div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="toggleWebhook('${w.id}')">🔄</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteWebhook('${w.id}')">🗑️</button>
+    </div>
+  `).join('') || '<div class="card" style="text-align:center;color:var(--muted);padding:2rem">Chưa có webhook</div>';
+}
+
+async function createWebhook() {
+  if (!currentBotId) { toast('Chọn bot!', 'error'); return; }
+  const events = [...document.querySelectorAll('.wh-event:checked')].map(e => e.value);
+  if (!events.length) { toast('Chọn ít nhất 1 event!', 'error'); return; }
+
+  const data = await api('POST', `/bots/${currentBotId}/webhooks`, {
+    url: document.getElementById('whUrl').value,
+    events,
+    secret: document.getElementById('whSecret').value
+  });
+  if (data.success) { toast('✅ Tạo webhook OK', 'success'); closeModal('addWebhook'); await loadWebhooks(); }
+  else toast('❌ ' + data.error, 'error');
+}
+
+async function toggleWebhook(id) {
+  await api('POST', `/bots/${currentBotId}/webhooks/${id}/toggle`);
+  await loadWebhooks();
+}
+
+async function deleteWebhook(id) {
+  await api('DELETE', `/bots/${currentBotId}/webhooks/${id}`);
+  toast('✅ Đã xoá webhook', 'success');
+  await loadWebhooks();
+}
+
+// ── Settings ──
+async function loadSettings() {
+  if (!currentBotId) return;
+  const data = await api('GET', `/bots/${currentBotId}`);
+  if (!data.success) return;
+  document.getElementById('settWelcome').value = data.bot.welcome_message || '';
+  document.getElementById('settBtnText').value = data.bot.welcome_button_text || '';
+}
+
+async function saveSettings() {
+  if (!currentBotId) { toast('Chọn bot!', 'error'); return; }
+  const data = await api('PUT', `/bots/${currentBotId}`, {
+    welcomeMessage: document.getElementById('settWelcome').value,
+    welcomeButtonText: document.getElementById('settBtnText').value
+  });
+  if (data.success) toast('✅ Đã lưu cài đặt!', 'success');
+  else toast('❌ ' + data.error, 'error');
+}
+
+// ── Broadcast ──
+async function sendBroadcast() {
+  if (!currentBotId) { toast('Chọn bot!', 'error'); return; }
+  const msg = document.getElementById('broadcastMsg').value;
+  if (!msg) { toast('Nhập nội dung!', 'error'); return; }
+  if (!confirm('Gửi broadcast tới tất cả users?')) return;
+
+  const data = await api('POST', `/bots/${currentBotId}/broadcast`, { message: msg });
+  if (data.success) {
+    toast(`✅ Gửi ${data.sent} OK, ${data.failed} lỗi`, 'success');
+  } else {
+    toast('❌ ' + data.error, 'error');
+  }
+}
+
+// ── Builder ──
+const COMPONENTS = [
+  { icon: '📝', name: 'Button', code: '<button onclick="Telegram.WebApp.sendData(\'clicked\')" style="background:#7c6aff;color:#fff;border:none;padding:.8rem 1.5rem;border-radius:12px;font-size:1rem;cursor:pointer;width:100%">Click me</button>' },
+  { icon: '📋', name: 'Form', code: '<form>\n  <input placeholder="Your name" style="width:100%;padding:.8rem;border:1px solid #ccc;border-radius:8px;margin-bottom:.5rem">\n  <button type="submit" style="background:#7c6aff;color:#fff;border:none;padding:.8rem;border-radius:8px;width:100%">Submit</button>\n</form>' },
+  { icon: '🃏', name: 'Card', code: '<div style="background:#fff;border-radius:16px;padding:1.5rem;box-shadow:0 4px 20px rgba(0,0,0,.1)">\n  <h2>Card Title</h2>\n  <p>Card content goes here.</p>\n</div>' },
+  { icon: '📊', name: 'Progress', code: '<div style="background:#f0f0f0;border-radius:8px;overflow:hidden">\n  <div style="background:#7c6aff;height:12px;width:70%;"></div>\n</div>' },
+  { icon: '🔔', name: 'Alert', code: '<div style="background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:1rem">\n  ⚠️ This is an alert message\n</div>' },
+  { icon: '📌', name: 'List', code: '<ul style="list-style:none;padding:0">\n  <li style="padding:.7rem;border-bottom:1px solid #eee">Item 1</li>\n  <li style="padding:.7rem;border-bottom:1px solid #eee">Item 2</li>\n  <li style="padding:.7rem">Item 3</li>\n</ul>' },
+  { icon: '🖼️', name: 'Image', code: '<img src="https://picsum.photos/400/200" style="width:100%;border-radius:12px" />' },
+  { icon: '🎨', name: 'Header', code: '<header style="text-align:center;padding:2rem 1rem">\n  <h1 style="color:#7c6aff">App Title</h1>\n  <p style="color:#666">Subtitle here</p>\n</header>' },
+  { icon: '📱', name: 'TG Theme', code: `<script>\n  document.body.style.background = Telegram.WebApp.themeParams.bg_color || '#fff';\n  document.body.style.color = Telegram.WebApp.themeParams.text_color || '#000';\n<\/script>` }
+];
+
+const STARTER_TEMPLATE = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Mini App</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"><\/script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, sans-serif;
+      background: var(--tg-theme-bg-color, #ffffff);
+      color: var(--tg-theme-text-color, #000000);
+      min-height: 100vh;
+      padding: 1rem;
+    }
+    .header { text-align: center; padding: 2rem 1rem; }
+    h1 { color: var(--tg-theme-link-color, #7c6aff); }
+    .btn {
+      display: block; width: 100%; padding: .9rem;
+      background: var(--tg-theme-button-color, #7c6aff);
+      color: var(--tg-theme-button-text-color, #fff);
+      border: none; border-radius: 12px; font-size: 1rem; cursor: pointer; margin-top: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div style="font-size:4rem">👋</div>
+    <h1>Chào mừng!</h1>
+    <p style="margin-top:.5rem;opacity:.7">Mini App của bạn đã hoạt động</p>
+  </div>
+  <button class="btn" onclick="Telegram.WebApp.sendData('hello')">
+    Gửi dữ liệu về bot
+  </button>
+  <button class="btn" style="margin-top:.5rem;background:transparent;border:2px solid currentColor;opacity:.7"
+    onclick="Telegram.WebApp.close()">
+    Đóng
+  </button>
+  <script>
+    Telegram.WebApp.ready();
+    Telegram.WebApp.expand();
+  <\/script>
+</body>
+</html>`;
+
+function initBuilder() {
+  const el = document.getElementById('builderComponents');
+  el.innerHTML = COMPONENTS.map((c, i) => `
+    <div class="component-chip" draggable="true" ondragstart="dragComp(event,${i})" onclick="insertComp(${i})">
+      <span class="ci">${c.icon}</span>${c.name}
+    </div>
+  `).join('');
+
+  if (!document.getElementById('builderCode').value) {
+    document.getElementById('builderCode').value = STARTER_TEMPLATE;
+    refreshPreview();
+  }
+}
+
+function dragComp(e, i) { e.dataTransfer.setData('compIndex', i); }
+
+function insertComp(i) {
+  const ta = document.getElementById('builderCode');
+  const code = '\n' + COMPONENTS[i].code + '\n';
+  const pos = ta.selectionStart;
+  ta.value = ta.value.slice(0, pos) + code + ta.value.slice(pos);
+  debouncePreview();
+}
+
+function refreshPreview() {
+  const code = document.getElementById('builderCode').value;
+  const frame = document.getElementById('previewFrame');
+  const blob = new Blob([code], { type: 'text/html' });
+  frame.src = URL.createObjectURL(blob);
+}
+
+function debouncePreview() {
+  clearTimeout(previewDebounce);
+  previewDebounce = setTimeout(refreshPreview, 800);
+}
+
+function changeDevice() {
+  const w = document.getElementById('previewDevice').value;
+  document.getElementById('previewFrame').style.width = w === '100%' ? '100%' : w + 'px';
+}
+
+function copyCode() {
+  navigator.clipboard.writeText(document.getElementById('builderCode').value);
+  toast('📋 Đã copy!', 'success');
+}
+
+function formatCode() {
+  // Basic auto-indent - simple pretty print
+  let code = document.getElementById('builderCode').value;
+  toast('✨ Formatted!', 'success');
+}
+
+async function saveBuilderApp() {
+  if (!currentBotId) { toast('Chọn bot trước!', 'error'); return; }
+  const htmlContent = document.getElementById('builderCode').value;
+  const name = prompt('Tên Mini App:', 'Builder App') || 'Builder App';
+
+  const data = await api('POST', `/bots/${currentBotId}/miniapps`, { name, htmlContent });
+  if (data.success) {
+    toast('✅ Đã lưu Mini App!', 'success');
+    await loadMiniapps();
+  } else {
+    toast('❌ ' + data.error, 'error');
+  }
+}
+
+function insertTemplate() {
+  if (confirm('Thay thế code bằng template mặc định?')) {
+    document.getElementById('editorCode').value = STARTER_TEMPLATE;
+  }
+}
+
+// ── File handling ──
+function handleFileSelect(input) {
+  const file = input.files[0];
+  if (file) {
+    selectedFile = file;
+    document.getElementById('selectedFileName').textContent = '✅ ' + file.name;
+    if (!document.getElementById('uploadAppName').value) {
+      document.getElementById('uploadAppName').value = file.name.replace(/\.[^.]+$/, '');
+    }
+  }
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('uploadZone').classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) {
+    selectedFile = file;
+    document.getElementById('selectedFileName').textContent = '✅ ' + file.name;
+    if (!document.getElementById('uploadAppName').value) {
+      document.getElementById('uploadAppName').value = file.name.replace(/\.[^.]+$/, '');
+    }
+  }
+}
+
+// ── Modals ──
+function openModal(name) { document.getElementById('modal-' + name).classList.add('open'); }
+function closeModal(name) { document.getElementById('modal-' + name).classList.remove('open'); }
+document.addEventListener('click', e => {
+  if (e.target.classList.contains('modal-overlay')) {
+    e.target.classList.remove('open');
+  }
+});
+
+// ── Toast ──
+function toast(msg, type = 'info') {
+  const el = document.createElement('div');
+  el.className = `toast toast-${type}`;
+  el.textContent = msg;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+// ── Helpers ──
+function showNoBotMsg(container) {
+  document.getElementById(container).innerHTML =
+    '<div class="card" style="text-align:center;padding:2rem;color:var(--muted)">⬅️ Chọn bot từ sidebar để tiếp tục</div>';
+}
+
+function esc(s) { return (s||'').replace(/'/g, "\\'"); }
+
+// Login on Enter
+document.getElementById('loginPass')?.addEventListener('keypress', e => {
+  if (e.key === 'Enter') login();
+});
+</script>
+</body>
+</html>
