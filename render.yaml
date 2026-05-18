@@ -1,0 +1,7 @@
+services:
+- type: web
+  name: telegram-miniapp-bot
+  env: node
+  rootDir: bot
+  buildCommand: npm install
+  startCommand: npm start
