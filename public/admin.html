@@ -1,0 +1,417 @@
+<!doctype html>
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>TGBot · Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/app.css">
+<style>
+  .chat-wrap{display:grid;grid-template-columns:1fr 1fr;gap:16px;height:calc(100vh - 200px);min-height:500px}
+  @media(max-width:900px){.chat-wrap{grid-template-columns:1fr;height:auto}}
+  .chat-list,.chat-view{background:var(--panel,#1a1f2e);border-radius:12px;display:flex;flex-direction:column;overflow:hidden}
+  .chat-list .head,.chat-view .head{padding:12px 16px;border-bottom:1px solid var(--border,#2a3142);font-weight:600;display:flex;gap:8px;align-items:center}
+  .chat-list .items{overflow-y:auto;flex:1}
+  .chat-item{padding:12px 16px;border-bottom:1px solid var(--border,#2a3142);cursor:pointer;display:flex;gap:10px;align-items:center}
+  .chat-item:hover{background:var(--muted,#222a3d)}
+  .chat-item.active{background:var(--primary,#3b82f6);color:#fff}
+  .chat-item .av{width:36px;height:36px;border-radius:50%;background:var(--muted-2,#2a3142);display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0}
+  .chat-item .meta{flex:1;min-width:0}
+  .chat-item .nm{font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .chat-item .sub{font-size:11px;opacity:.7}
+  .chat-msgs{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:8px}
+  .bubble{max-width:75%;padding:8px 12px;border-radius:12px;font-size:14px;white-space:pre-wrap;word-wrap:break-word}
+  .bubble.in{background:var(--muted,#222a3d);align-self:flex-start;border-bottom-left-radius:4px}
+  .bubble.out{background:var(--primary,#3b82f6);color:#fff;align-self:flex-end;border-bottom-right-radius:4px}
+  .bubble .ts{font-size:10px;opacity:.6;margin-top:4px}
+  .chat-reply{border-top:1px solid var(--border,#2a3142);padding:10px;display:flex;gap:8px}
+  .chat-reply input{flex:1;background:var(--muted,#222a3d);border:1px solid var(--border,#2a3142);color:var(--text,#e6e9ef);padding:8px 12px;border-radius:8px}
+  .filters{display:flex;gap:8px;padding:10px 12px;border-bottom:1px solid var(--border,#2a3142)}
+  .filters input,.filters select{flex:1;background:var(--muted,#222a3d);border:1px solid var(--border,#2a3142);color:var(--text,#e6e9ef);padding:6px 10px;border-radius:6px;font-size:13px}
+</style>
+</head>
+<body>
+<div id="gate">Đang xác thực…</div>
+
+<div class="layout" id="app" style="display:none">
+  <aside>
+    <div class="brand">
+      <div class="b">T</div>
+      <div><div class="t1">TGBot</div><div class="t2">Admin · Auzastore</div></div>
+    </div>
+
+    <div class="nav-h">Tổng quan</div>
+    <div class="nav"><a data-tab="dash" class="active"><i class="i ic-dashboard"></i> Dashboard</a></div>
+
+    <div class="nav-h">Quản lý</div>
+    <div class="nav">
+      <a data-tab="bots"><i class="i ic-bot"></i> Bot Telegram</a>
+      <a data-tab="newbot"><i class="i ic-plus"></i> Thêm bot mới</a>
+      <a data-tab="users"><i class="i ic-users"></i> Người dùng & Tin nhắn</a>
+      <a data-tab="broadcast"><i class="i ic-message"></i> Broadcast</a>
+      <a data-tab="sellers"><i class="i ic-users"></i> Sellers</a>
+      <a data-tab="topups"><i class="i ic-wallet"></i> Nạp tiền</a>
+    </div>
+
+    <div class="nav-h">Hệ thống</div>
+    <div class="nav"><a data-tab="bank"><i class="i ic-bank"></i> Cấu hình Bank</a></div>
+
+    <div class="me">
+      <div class="av" id="av">A</div>
+      <div style="flex:1;min-width:0">
+        <div class="nm" id="meName">admin</div>
+        <div class="ro">Quản trị viên</div>
+      </div>
+      <button class="ghost icon-only" title="Đăng xuất" onclick="logout()"><i class="i ic-logout sm"></i></button>
+    </div>
+  </aside>
+
+  <main>
+    <section id="dash" class="active">
+      <h1 class="page">Dashboard</h1>
+      <p class="page-sub">Tổng quan hệ thống TGBot.</p>
+      <div class="cards" id="stats"></div>
+      <div class="panel">
+        <h2><i class="i ic-info"></i> Hướng dẫn nhanh</h2>
+        <p class="hint" style="font-size:13.5px">
+          <b>1.</b> Vào <b>Cấu hình Bank</b> nhập STK + QR.<br>
+          <b>2.</b> Tạo <b>Seller</b> hoặc tự thêm bot ở mục <b>Thêm bot mới</b>.<br>
+          <b>3.</b> Bot tự set <b>menu button góc trái dưới</b> mở Mini App (chạy cả PC).<br>
+          <b>4.</b> Mọi tin nhắn user gửi đều được lưu — xem ở tab <b>Người dùng & Tin nhắn</b>.<br>
+          <b>5.</b> Dùng tab <b>Broadcast</b> để gửi thông báo đến toàn bộ user.
+        </p>
+      </div>
+    </section>
+
+    <section id="bots">
+      <h1 class="page">Bot Telegram</h1>
+      <div class="panel"><div class="table-wrap"><table>
+        <thead><tr><th>ID</th><th>Username</th><th>Web URL</th><th>Nhãn nút</th><th>Owner</th><th>Trạng thái</th><th></th></tr></thead>
+        <tbody id="botsTbl"></tbody>
+      </table></div></div>
+    </section>
+
+    <section id="newbot">
+      <h1 class="page">Thêm bot mới</h1>
+      <div class="panel">
+        <label><i class="i ic-key sm"></i> License Key <span class="hint">(bỏ trống nếu LICENSE_REQUIRED=0)</span></label>
+        <input id="b_key" placeholder="License key (tuỳ chọn)"/>
+        <label><i class="i ic-bot sm"></i> Bot Token <span class="req">*</span></label>
+        <input id="b_tok" placeholder="123456:ABC..."/>
+        <label><i class="i ic-link sm"></i> Web URL (Mini App) <span class="req">*</span></label>
+        <input id="b_url" placeholder="https://..."/>
+        <label><i class="i ic-message sm"></i> Tin nhắn chào (HTML)</label>
+        <textarea id="b_wel" placeholder="Để trống dùng mặc định"></textarea>
+        <p class="hint">Biến: <code>{name}</code> <code>{first_name}</code> <code>{username}</code> <code>{full_name}</code> <code>{monthly_users}</code></p>
+        <label><i class="i ic-store sm"></i> Nhãn nút Mini App</label>
+        <input id="b_btn" value="Mở Shop"/>
+        <div style="margin-top:20px"><button onclick="createBot()"><i class="i ic-zap sm"></i> Kích hoạt bot</button></div>
+      </div>
+    </section>
+
+    <!-- USERS & MESSAGES -->
+    <section id="users">
+      <h1 class="page">Người dùng & Tin nhắn</h1>
+      <p class="page-sub">Toàn bộ user đã /start bot. Click để xem lịch sử chat và trả lời.</p>
+      <div class="chat-wrap">
+        <div class="chat-list">
+          <div class="head"><i class="i ic-users sm"></i> Danh sách user</div>
+          <div class="filters">
+            <select id="u_bot"><option value="">Tất cả bot</option></select>
+            <input id="u_q" placeholder="Tìm username, tên, ID…"/>
+          </div>
+          <div class="items" id="usersList"></div>
+        </div>
+        <div class="chat-view">
+          <div class="head" id="chatHead">Chọn 1 user để xem tin nhắn</div>
+          <div class="chat-msgs" id="chatMsgs"></div>
+          <div class="chat-reply">
+            <input id="replyText" placeholder="Trả lời (HTML hỗ trợ)…" disabled/>
+            <button id="replyBtn" disabled onclick="sendReply()">Gửi</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- BROADCAST -->
+    <section id="broadcast">
+      <h1 class="page">Broadcast</h1>
+      <p class="page-sub">Gửi tin nhắn đến tất cả user đã sử dụng bot. Tối đa 3500 ký tự.</p>
+      <div class="panel">
+        <label><i class="i ic-bot sm"></i> Gửi qua bot</label>
+        <select id="bc_bot"><option value="">Tất cả bot</option></select>
+        <label><i class="i ic-message sm"></i> Nội dung (HTML)</label>
+        <textarea id="bc_text" rows="6" placeholder="Nhập thông báo…"></textarea>
+        <div style="margin-top:16px;display:flex;gap:8px">
+          <button onclick="sendBroadcast()"><i class="i ic-send sm"></i> Gửi broadcast</button>
+          <button class="ghost" onclick="loadBroadcasts()"><i class="i ic-refresh sm"></i> Làm mới</button>
+        </div>
+      </div>
+      <div class="panel">
+        <h2><i class="i ic-history sm"></i> Lịch sử broadcast</h2>
+        <div class="table-wrap"><table>
+          <thead><tr><th>ID</th><th>Người gửi</th><th>Bot</th><th>Nội dung</th><th>Tổng</th><th>Đã gửi</th><th>Lỗi</th><th>Thời gian</th></tr></thead>
+          <tbody id="bcTbl"></tbody>
+        </table></div>
+      </div>
+    </section>
+
+    <section id="sellers">
+      <h1 class="page">Sellers</h1>
+      <div class="panel">
+        <h2><i class="i ic-plus"></i> Tạo seller</h2>
+        <div class="row">
+          <div><label>Username</label><input id="s_u"/></div>
+          <div><label>Password</label><input id="s_p" type="password"/></div>
+          <div><label>Tên hiển thị</label><input id="s_n"/></div>
+        </div>
+        <div style="margin-top:16px"><button onclick="createSeller()">Tạo</button></div>
+      </div>
+      <div class="panel"><div class="table-wrap"><table>
+        <thead><tr><th>ID</th><th>Username</th><th>Tên</th><th>Số dư</th><th>Trạng thái</th><th></th></tr></thead>
+        <tbody id="sellersTbl"></tbody>
+      </table></div></div>
+    </section>
+
+    <section id="topups">
+      <h1 class="page">Yêu cầu nạp tiền</h1>
+      <div class="panel"><div class="table-wrap"><table>
+        <thead><tr><th>ID</th><th>Seller</th><th>Số tiền</th><th>CK</th><th>Trạng thái</th><th>Tạo</th><th></th></tr></thead>
+        <tbody id="topupsTbl"></tbody>
+      </table></div></div>
+    </section>
+
+    <section id="bank">
+      <h1 class="page">Cấu hình Bank</h1>
+      <div class="panel">
+        <div class="row">
+          <div><label>Tên ngân hàng</label><input id="bk_name"/></div>
+          <div><label>Số tài khoản</label><input id="bk_acc"/></div>
+          <div><label>Chủ tài khoản</label><input id="bk_own"/></div>
+          <div><label>Prefix CK</label><input id="bk_pre" placeholder="NAP"/></div>
+        </div>
+        <div style="margin-top:22px;display:flex;gap:24px;flex-wrap:wrap">
+          <div>
+            <label>QR Bank</label>
+            <div class="qr-prev" id="qrPrev"><div>Chưa có QR</div></div>
+          </div>
+          <div style="flex:1;min-width:260px">
+            <label>Upload QR (PNG/JPG ≤ 2MB)</label>
+            <input type="file" id="qrFile" accept="image/*"/>
+            <p class="hint">Hoặc URL ảnh:</p>
+            <input id="bk_qr" placeholder="/uploads/qr-xxx.png"/>
+          </div>
+        </div>
+        <div style="margin-top:22px"><button onclick="saveBank()">Lưu</button></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+const T=()=>localStorage.getItem('tg_token');
+const H=()=>({Authorization:'Bearer '+T(),'Content-Type':'application/json'});
+function logout(){localStorage.clear();location.href='/login'}
+function toast(msg,kind=''){
+  const t=document.createElement('div');t.className='toast '+kind;
+  t.textContent=msg;
+  document.body.appendChild(t);setTimeout(()=>t.remove(),3200);
+}
+async function api(url,opt={}){
+  const r=await fetch(url,{...opt,headers:{...H(),...(opt.headers||{})}});
+  if(r.status===401){logout();throw new Error('401')}
+  const d=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(d.error||'Lỗi');return d;
+}
+function fmt(d){if(!d)return'';return new Date(d.replace(' ','T')+'Z').toLocaleString('vi-VN')}
+function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+
+(async()=>{
+  const t=T();if(!t){location.href='/login';return}
+  try{
+    const me=await api('/api/me');
+    if(me.role!=='admin'){location.href='/seller';return}
+    document.getElementById('meName').textContent=me.username;
+    document.getElementById('av').textContent=me.username[0].toUpperCase();
+    document.getElementById('gate').remove();
+    document.getElementById('app').style.display='grid';
+    initNav();loadDash();
+  }catch{location.href='/login'}
+})();
+
+function initNav(){document.querySelectorAll('.nav a').forEach(a=>a.onclick=()=>show(a.dataset.tab))}
+function show(tab){
+  document.querySelectorAll('section').forEach(s=>s.classList.remove('active'));
+  document.getElementById(tab).classList.add('active');
+  document.querySelectorAll('.nav a').forEach(a=>a.classList.toggle('active',a.dataset.tab===tab));
+  ({dash:loadDash,bots:loadBots,sellers:loadSellers,topups:loadTopups,bank:loadBank,users:initUsersTab,broadcast:initBroadcastTab})[tab]?.();
+}
+
+async function loadDash(){
+  const s=await api('/api/stats');
+  const cards=[['Bot tổng',s.bots],['Bot đang chạy',s.bots_active],['User tổng',s.users],['User/tháng',s.users_monthly],['Sellers',s.sellers],['Tin nhắn',s.messages],['Nạp chờ duyệt',s.topups_pending]];
+  document.getElementById('stats').innerHTML=cards.map(([k,v])=>`<div class="card"><div class="k">${k}</div><div class="v">${v??0}</div></div>`).join('');
+}
+function emptyRow(c,m){return `<tr><td colspan="${c}"><div class="empty">${m}</div></td></tr>`}
+
+async function loadBots(){
+  const rows=await api('/api/bots');
+  document.getElementById('botsTbl').innerHTML=rows.map(b=>
+    `<tr><td>#${b.id}</td><td>${b.bot_username?'@'+b.bot_username:'-'}</td>
+     <td><a href="${b.web_url}" target="_blank">${esc(b.web_url)}</a></td>
+     <td>${esc(b.button_label||'')}</td>
+     <td>${b.owner_seller_id?'seller#'+b.owner_seller_id:'<span class="badge info">admin</span>'}</td>
+     <td><span class="badge ${b.active?'ok':'bad'}">${b.active?'Đang chạy':'Tắt'}</span></td>
+     <td><div class="actions">
+       <button class="ghost sm" onclick="toggleBot(${b.id},${b.active?0:1})">${b.active?'Tắt':'Bật'}</button>
+       <button class="danger sm" onclick="delBot(${b.id})">Xoá</button>
+     </div></td></tr>`).join('')||emptyRow(7,'Chưa có bot');
+}
+async function toggleBot(id,active){await api('/api/bots/'+id,{method:'PATCH',body:JSON.stringify({active:!!active})});loadBots()}
+async function delBot(id){if(!confirm('Xoá bot #'+id+'?'))return;await api('/api/bots/'+id,{method:'DELETE'});loadBots()}
+async function createBot(){
+  try{
+    await api('/api/bots',{method:'POST',body:JSON.stringify({license_key:b_key.value.trim(),token:b_tok.value.trim(),web_url:b_url.value.trim(),welcome:b_wel.value,button_label:b_btn.value})});
+    toast('Bot đã kích hoạt','ok');
+    b_key.value=b_tok.value=b_url.value=b_wel.value='';
+    show('bots');
+  }catch(e){toast(e.message,'err')}
+}
+
+// ---- USERS & MESSAGES ----
+let currentChat=null;
+async function initUsersTab(){
+  const bots=await api('/api/bots');
+  const sel=document.getElementById('u_bot');
+  sel.innerHTML='<option value="">Tất cả bot</option>'+bots.map(b=>`<option value="${b.id}">#${b.id} ${b.bot_username?'@'+b.bot_username:''}</option>`).join('');
+  sel.onchange=loadUsers;
+  document.getElementById('u_q').oninput=debounce(loadUsers,300);
+  loadUsers();
+}
+function debounce(fn,ms){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms)}}
+async function loadUsers(){
+  const bot=document.getElementById('u_bot').value;
+  const q=document.getElementById('u_q').value;
+  const qs=new URLSearchParams();if(bot)qs.set('bot_id',bot);if(q)qs.set('q',q);
+  const rows=await api('/api/users?'+qs);
+  const list=document.getElementById('usersList');
+  if(!rows.length){list.innerHTML='<div class="empty" style="padding:30px">Không có user</div>';return}
+  list.innerHTML=rows.map(u=>{
+    const nm=esc((u.first_name||'')+' '+(u.last_name||'')).trim()||esc(u.username||'')||('ID '+u.tg_user_id);
+    const initial=(nm[0]||'?').toUpperCase();
+    return `<div class="chat-item" onclick="openChat(${u.bot_id},${u.tg_user_id},this)">
+      <div class="av">${esc(initial)}</div>
+      <div class="meta">
+        <div class="nm">${nm} ${u.username?'<span style="opacity:.6;font-weight:400">@'+esc(u.username)+'</span>':''}</div>
+        <div class="sub">Bot #${u.bot_id} · ${u.msg_count||0} tin · ${fmt(u.last_seen)}</div>
+      </div></div>`;
+  }).join('');
+}
+async function openChat(bot_id,tg_user_id,el){
+  document.querySelectorAll('.chat-item').forEach(i=>i.classList.remove('active'));
+  if(el)el.classList.add('active');
+  currentChat={bot_id,tg_user_id};
+  const d=await api(`/api/users/${bot_id}/${tg_user_id}/messages`);
+  const u=d.user||{};
+  const nm=esc((u.first_name||'')+' '+(u.last_name||'')).trim()||esc(u.username||'')||('ID '+tg_user_id);
+  document.getElementById('chatHead').innerHTML=`<i class="i ic-user sm"></i> ${nm} · Bot #${bot_id} · ${u.msg_count||0} tin`;
+  document.getElementById('chatMsgs').innerHTML=d.messages.map(m=>
+    `<div class="bubble ${m.direction}">${esc(m.text)}<div class="ts">${fmt(m.created_at)}</div></div>`
+  ).join('')||'<div class="empty" style="padding:30px">Chưa có tin nhắn</div>';
+  document.getElementById('chatMsgs').scrollTop=9e9;
+  document.getElementById('replyText').disabled=false;
+  document.getElementById('replyBtn').disabled=false;
+  document.getElementById('replyText').focus();
+}
+async function sendReply(){
+  if(!currentChat)return;
+  const text=document.getElementById('replyText').value.trim();if(!text)return;
+  try{
+    await api(`/api/users/${currentChat.bot_id}/${currentChat.tg_user_id}/send`,{method:'POST',body:JSON.stringify({text})});
+    document.getElementById('replyText').value='';
+    openChat(currentChat.bot_id,currentChat.tg_user_id);
+    toast('Đã gửi','ok');
+  }catch(e){toast(e.message,'err')}
+}
+document.addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&document.activeElement?.id==='replyText'&&!e.shiftKey){e.preventDefault();sendReply()}
+});
+
+// ---- BROADCAST ----
+async function initBroadcastTab(){
+  const bots=await api('/api/bots');
+  const sel=document.getElementById('bc_bot');
+  sel.innerHTML='<option value="">Tất cả bot</option>'+bots.map(b=>`<option value="${b.id}">#${b.id} ${b.bot_username?'@'+b.bot_username:''}</option>`).join('');
+  loadBroadcasts();
+}
+async function sendBroadcast(){
+  const text=document.getElementById('bc_text').value.trim();
+  const bot_id=document.getElementById('bc_bot').value||null;
+  if(!text)return toast('Nhập nội dung','err');
+  if(!confirm('Gửi broadcast tới '+(bot_id?'bot #'+bot_id:'TẤT CẢ bot')+'?'))return;
+  try{
+    const r=await api('/api/broadcast',{method:'POST',body:JSON.stringify({text,bot_id:bot_id?Number(bot_id):null})});
+    toast(`Đã xếp hàng gửi ${r.total} user`,'ok');
+    document.getElementById('bc_text').value='';
+    setTimeout(loadBroadcasts,1000);
+  }catch(e){toast(e.message,'err')}
+}
+async function loadBroadcasts(){
+  const rows=await api('/api/broadcasts');
+  document.getElementById('bcTbl').innerHTML=rows.map(b=>
+    `<tr><td>#${b.id}</td><td>${b.sender_role}${b.sender_id?'#'+b.sender_id:''}</td>
+     <td>${b.bot_id?'#'+b.bot_id:'<i>tất cả</i>'}</td>
+     <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(b.text)}</td>
+     <td>${b.total}</td><td><b style="color:#5cb85c">${b.sent}</b></td><td style="color:#d9534f">${b.failed}</td>
+     <td style="font-size:12px;color:var(--muted)">${fmt(b.created_at)}</td></tr>`
+  ).join('')||emptyRow(8,'Chưa có broadcast');
+}
+
+// ---- SELLERS / TOPUPS / BANK (unchanged) ----
+async function loadSellers(){
+  const rows=await api('/api/admin/sellers');
+  document.getElementById('sellersTbl').innerHTML=rows.map(s=>
+    `<tr><td>#${s.id}</td><td><b>${esc(s.username)}</b></td><td>${esc(s.display_name||'')}</td>
+     <td><b>${(s.balance||0).toLocaleString('vi')}</b>đ</td>
+     <td><span class="badge ${s.active?'ok':'bad'}">${s.active?'Active':'Khoá'}</span></td>
+     <td><div class="actions">
+       <button class="ghost sm" onclick="addBal(${s.id})">Tiền</button>
+       <button class="ghost sm" onclick="resetPwd(${s.id})">Reset</button>
+       <button class="ghost sm" onclick="toggleSeller(${s.id},${s.active?0:1})">${s.active?'Khoá':'Mở'}</button>
+       <button class="danger sm" onclick="delSeller(${s.id})">Xoá</button>
+     </div></td></tr>`).join('')||emptyRow(6,'Chưa có seller');
+}
+async function createSeller(){try{await api('/api/admin/sellers',{method:'POST',body:JSON.stringify({username:s_u.value,password:s_p.value,display_name:s_n.value})});toast('Đã tạo','ok');s_u.value=s_p.value=s_n.value='';loadSellers()}catch(e){toast(e.message,'err')}}
+async function addBal(id){const v=prompt('Cộng/trừ:');if(v===null)return;await api('/api/admin/sellers/'+id,{method:'PATCH',body:JSON.stringify({balance_delta:Number(v)})});loadSellers()}
+async function resetPwd(id){const v=prompt('Pass mới (≥6):');if(!v)return;await api('/api/admin/sellers/'+id,{method:'PATCH',body:JSON.stringify({password:v})});toast('OK','ok')}
+async function toggleSeller(id,a){await api('/api/admin/sellers/'+id,{method:'PATCH',body:JSON.stringify({active:!!a})});loadSellers()}
+async function delSeller(id){if(!confirm('Xoá?'))return;await api('/api/admin/sellers/'+id,{method:'DELETE'});loadSellers()}
+
+async function loadTopups(){
+  const rows=await api('/api/admin/topups');
+  document.getElementById('topupsTbl').innerHTML=rows.map(t=>
+    `<tr><td>#${t.id}</td><td>${esc(t.seller_username||'?')}</td>
+     <td><b>${t.amount.toLocaleString('vi')}</b>đ</td><td><code>${esc(t.transfer_code)}</code></td>
+     <td><span class="badge ${t.status==='approved'?'ok':t.status==='rejected'?'bad':'warn'}">${t.status}</span></td>
+     <td style="font-size:12px">${fmt(t.created_at)}</td>
+     <td>${t.status==='pending'?`<button class="ok sm" onclick="approve(${t.id})">Duyệt</button> <button class="danger sm" onclick="reject(${t.id})">Từ chối</button>`:''}</td></tr>`
+  ).join('')||emptyRow(7,'Không có yêu cầu');
+}
+async function approve(id){await api('/api/admin/topups/'+id+'/approve',{method:'POST'});loadTopups()}
+async function reject(id){const n=prompt('Lý do:')||'';await api('/api/admin/topups/'+id+'/reject',{method:'POST',body:JSON.stringify({note:n})});loadTopups()}
+
+async function loadBank(){
+  const b=await api('/api/bank');
+  bk_name.value=b.bank_name||'';bk_acc.value=b.bank_account||'';bk_own.value=b.bank_owner||'';bk_qr.value=b.bank_qr_url||'';bk_pre.value=b.topup_prefix||'';
+  document.getElementById('qrPrev').innerHTML=b.bank_qr_url?`<img src="${b.bank_qr_url}"/>`:'<div>Chưa có QR</div>';
+}
+async function saveBank(){await api('/api/admin/bank',{method:'POST',body:JSON.stringify({bank_name:bk_name.value,bank_account:bk_acc.value,bank_owner:bk_own.value,bank_qr_url:bk_qr.value,topup_prefix:bk_pre.value})});toast('Đã lưu','ok');loadBank()}
+document.addEventListener('change',e=>{
+  if(e.target.id==='qrFile'){
+    const f=e.target.files[0];if(!f)return;
+    const r=new FileReader();
+    r.onload=async()=>{try{const d=await api('/api/admin/bank/qr-upload',{method:'POST',body:JSON.stringify({data_url:r.result})});bk_qr.value=d.url;document.getElementById('qrPrev').innerHTML=`<img src="${d.url}"/>`;toast('OK','ok')}catch(ex){toast(ex.message,'err')}};
+    r.readAsDataURL(f);
+  }
+});
+</script>
+</body></html>
