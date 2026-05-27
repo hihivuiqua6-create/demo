@@ -1,8 +1,0 @@
-Đã gộp vào source v5.9:
-- Bot bán acc/shop bán acc đầy đủ.
-- Add danh mục, xóa danh mục, thêm acc list/từng acc, mua xong hiện user|pass.
-- Nạp tiền ngân hàng/VietQR/ZaloPay/MoMo QR, duyệt/từ chối đơn, cộng/trừ tiền user.
-- Xem list user, UID, lịch sử mua, lịch sử nạp, hoạt động gần đây.
-- Main admin bật/tắt bot, giới hạn tối đa 2 bot chạy cùng lúc.
-- Chống sập Render/Node: bắt uncaughtException/unhandledRejection, polling recovery, rate limit, healthz, dọn log/session định kỳ.
-- Gói zip giải nén ra full source trực tiếp.
