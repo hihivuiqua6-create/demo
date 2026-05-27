@@ -1,0 +1,12 @@
+FIX RENDER BUILD
+
+Lỗi cũ do Render đang dùng Node v26.2.0 làm better-sqlite3 build fail.
+Source này đã pin Node 20.18.1 bằng package.json + render.yaml + .node-version + .nvmrc.
+
+Render settings nên để:
+- Environment/Runtime: Node
+- Build Command: npm install
+- Start Command: npm start
+- Manual Deploy: Clear build cache & deploy
+
+Nếu repo GitHub đang còn package-lock.json cũ thì xóa package-lock.json rồi push lại.
